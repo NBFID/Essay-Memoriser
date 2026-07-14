@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Essay Eraser</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, sans-serif;
+    font-size: 12pt;
+    line-height: 1.5;
+    color: #000;
+    background: #fff;
+    margin: 20px;
+  }
+  textarea {
+    width: 100%;
+    height: 150px;
+    font-family: Arial, sans-serif;
+    font-size: 12pt;
+    line-height: 1.5;
+    padding: 8px;
+  }
+  #controls {
+    margin: 10px 0;
+    padding: 10px 0;
+    border-top: 1px solid #000;
+    border-bottom: 1px solid #000;
+  }
+  #controls > * {
+    margin-right: 10px;
+    margin-bottom: 6px;
+  }
+  #stage {
+    position: relative;
+    border: 1px solid #000;
+    padding: 10px;
+    display: none;
+    user-select: none;
+  }
+  #textLayer {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    position: relative;
+  }
+  #coverCanvas {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    cursor: crosshair;
+  }
+  .word {
+    display: inline;
+  }
+  .word.erased-whole {
+    background: transparent;
+  }
+  #resetBtn {
+    margin-left: auto;
+  }
+  label { font-size: 12pt; }
+</style>
+</head>
+<body>
+
+<h2 style="font-weight:normal;">Essay Eraser</h2>
+
+<textarea id="essayInput" placeholder="Paste your essay here..."></textarea>
+<br>
+<button id="startBtn">Cover Essay</button>
+
+<div id="controls">
+  <label><input type="radio" name="mode" value="partial" checked> Partial (eraser)</label>
+  <label><input type="radio" name="mode" value="whole"> Whole (word/sentence)</label>
+  <select id="wholeUnit">
+    <option value="word">Word at a time</option>
+    <option value="sentence">Sentence at a time</option>
+  </select>
+  <label>Eraser size: <input type="range" id="eraserSize" min="10" max="80" value="30"></label>
+  <button id="undoBtn" disabled>Undo</button>
+  <button id="redoBtn" disabled>Redo</button>
+  <button id="resetBtn">Reset / New Essay</button>
+</div>
+
+<div id="stage">
+  <div id="textLayer"></div>
+  <canvas id="coverCanvas"></canvas>
+</div>
+
+<script>
+const essayInput = document.getElementById('essayInput');
+const startBtn = document.getElementById('startBtn');
+const resetBtn = document.getElementById('resetBtn');
+const stage = document.getElementById('stage');
+const textLayer = document.getElementById('textLayer');
+const coverCanvas = document.getElementById('coverCanvas');
+const ctx = coverCanvas.getContext('2d');
+const wholeUnit = document.getElementById('wholeUnit');
+const eraserSizeInput = document.getElementById('eraserSize');
+const undoBtn = document.getElementById('undoBtn');
+const redoBtn = document.getElementById('redoBtn');
+
+let mode = 'partial';
+let drawing = false;
+let undoStack = [];
+let redoStack = [];
+
+function snapshot() {
+  return ctx.getImageData(0, 0, coverCanvas.width, coverCanvas.height);
+}
+
+function pushUndo() {
+  undoStack.push(snapshot());
+  redoStack = [];
+  updateUndoRedoButtons();
+}
+
+function updateUndoRedoButtons() {
+  undoBtn.disabled = undoStack.length === 0;
+  redoBtn.disabled = redoStack.length === 0;
+}
+
+undoBtn.addEventListener('click', () => {
+  if (undoStack.length === 0) return;
+  redoStack.push(snapshot());
+  ctx.putImageData(undoStack.pop(), 0, 0);
+  updateUndoRedoButtons();
+});
+
+redoBtn.addEventListener('click', () => {
+  if (redoStack.length === 0) return;
+  undoStack.push(snapshot());
+  ctx.putImageData(redoStack.pop(), 0, 0);
+  updateUndoRedoButtons();
+});
+
+document.querySelectorAll('input[name="mode"]').forEach(r => {
+  r.addEventListener('change', () => {
+    mode = document.querySelector('input[name="mode"]:checked').value;
+  });
+});
+
+startBtn.addEventListener('click', () => {
+  const text = essayInput.value;
+  if (!text.trim()) return;
+
+  // Build word-wrapped text layer, splitting into spans per word (keep sentence groupings via data attrs)
+  textLayer.innerHTML = '';
+  buildWordSpans(text);
+
+  essayInput.style.display = 'none';
+  startBtn.style.display = 'none';
+  stage.style.display = 'block';
+
+  sizeCoverCanvas();
+});
+
+function sizeCoverCanvas() {
+  const rect = textLayer.getBoundingClientRect();
+  coverCanvas.width = rect.width;
+  coverCanvas.height = rect.height;
+  coverCanvas.style.width = rect.width + 'px';
+  coverCanvas.style.height = rect.height + 'px';
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, coverCanvas.width, coverCanvas.height);
+  undoStack = [];
+  redoStack = [];
+  updateUndoRedoButtons();
+}
+
+window.addEventListener('resize', () => {
+  if (stage.style.display === 'block') sizeCoverCanvas();
+});
+
+resetBtn.addEventListener('click', () => {
+  stage.style.display = 'none';
+  essayInput.style.display = 'block';
+  startBtn.style.display = 'inline-block';
+  textLayer.innerHTML = '';
+});
+
+// Split essay into words, tag each word with a sentence index (newline-aware)
+function buildWordSpans(text) {
+  const lines = text.split('\n');
+  let sIndex = 0;
+  lines.forEach((line, li) => {
+    if (line.trim() === '') {
+      textLayer.appendChild(document.createElement('br'));
+      return;
+    }
+    const sentences = line.split(/(?<=[.!?])\s+/);
+    sentences.forEach(sentence => {
+      if (sentence === '') return;
+      const tokens = sentence.split(/(\s+)/);
+      tokens.forEach(tok => {
+        if (tok === '') return;
+        if (/^\s+$/.test(tok)) {
+          textLayer.appendChild(document.createTextNode(tok));
+        } else {
+          const span = document.createElement('span');
+          span.className = 'word';
+          span.textContent = tok;
+          span.dataset.sentence = sIndex;
+          textLayer.appendChild(span);
+        }
+      });
+      sIndex++;
+    });
+    if (li < lines.length - 1) textLayer.appendChild(document.createElement('br'));
+  });
+}
+
+// PARTIAL ERASE (canvas scrubbing)
+function getPos(e) {
+  const rect = coverCanvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x: clientX - rect.left, y: clientY - rect.top };
+}
+
+function erase(x, y) {
+  const size = parseInt(eraserSizeInput.value, 10);
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.beginPath();
+  ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+coverCanvas.addEventListener('mousedown', (e) => {
+  if (mode !== 'partial') return;
+  drawing = true;
+  pushUndo();
+  const p = getPos(e);
+  erase(p.x, p.y);
+});
+coverCanvas.addEventListener('mousemove', (e) => {
+  if (mode !== 'partial' || !drawing) return;
+  const p = getPos(e);
+  erase(p.x, p.y);
+});
+window.addEventListener('mouseup', () => drawing = false);
+
+coverCanvas.addEventListener('touchstart', (e) => {
+  if (mode !== 'partial') return;
+  drawing = true;
+  pushUndo();
+  const p = getPos(e);
+  erase(p.x, p.y);
+  e.preventDefault();
+}, { passive: false });
+coverCanvas.addEventListener('touchmove', (e) => {
+  if (mode !== 'partial' || !drawing) return;
+  const p = getPos(e);
+  erase(p.x, p.y);
+  e.preventDefault();
+}, { passive: false });
+coverCanvas.addEventListener('touchend', () => drawing = false);
+
+// WHOLE ERASE (word/sentence) - click on the cover to reveal
+coverCanvas.addEventListener('click', (e) => {
+  if (mode !== 'whole') return;
+  const p = getPos(e);
+  const stageRect = stage.getBoundingClientRect();
+  const canvasRect = coverCanvas.getBoundingClientRect();
+  // find element under the point using elementFromPoint, temporarily hide canvas
+  coverCanvas.style.pointerEvents = 'none';
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  coverCanvas.style.pointerEvents = 'auto';
+
+  if (!el || !el.classList || !el.classList.contains('word')) return;
+
+  pushUndo();
+
+  const unit = wholeUnit.value;
+  if (unit === 'word') {
+    revealElement(el, p);
+  } else {
+    const sIndex = el.dataset.sentence;
+    const sentenceWords = textLayer.querySelectorAll(`.word[data-sentence="${sIndex}"]`);
+    sentenceWords.forEach(w => revealElement(w));
+  }
+});
+
+function revealElement(el, atPoint) {
+  const wordRect = el.getBoundingClientRect();
+  const canvasRect = coverCanvas.getBoundingClientRect();
+  const x = wordRect.left - canvasRect.left;
+  const y = wordRect.top - canvasRect.top;
+  const w = wordRect.width;
+  const h = wordRect.height;
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.clearRect(x - 2, y - 2, w + 4, h + 4);
+  ctx.globalCompositeOperation = 'source-over';
+}
+</script>
+
+</body>
+</html>
