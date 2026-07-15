@@ -282,7 +282,11 @@ function buildWordSpans(text) {
       textLayer.appendChild(document.createElement('br'));
       return;
     }
-    const sentences = line.split(/(?<![Mm]r)(?<![Dd]r)(?<![Mm][ss])(?<![Jj]r)(?<![Ss]r)\.\s+(?=[A-Z])/);
+    const parts = line.split(/(?<![Mm]r)(?<![Dd]r)(?<![Mm][ss])(?<![Jj]r)(?<![Ss]r)(\.)\s+(?=[A-Z])/);
+    const sentences = [];
+    for (let i = 0; i < parts.length; i += 2) {
+      if (parts[i].trim()) sentences.push(parts[i] + (parts[i+1] ? parts[i+1] + ' ' : ''));
+    }
     sentences.forEach(sentence => {
       if (sentence === '') return;
       const tokens = sentence.split(/(\s+)/);
