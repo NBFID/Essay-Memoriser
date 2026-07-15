@@ -120,6 +120,7 @@
   </span>
   <button id="undoBtn" disabled>Undo</button>
   <button id="redoBtn" disabled>Redo</button>
+  <button id="recoverBtn">Re-cover</button>
   <button id="resetBtn">Reset / New Essay</button>
 </div>
 
@@ -140,6 +141,7 @@ const wholeUnit = document.getElementById('wholeUnit');
 const eraserSizeInput = document.getElementById('eraserSize');
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
+const recoverBtn = document.getElementById('recoverBtn');
 const eraserSizeLabel = document.getElementById('eraserSizeLabel');
 const highlightControls = document.getElementById('highlightControls');
 const highlightEraserBtn = document.getElementById('highlightEraserBtn');
@@ -193,6 +195,12 @@ redoBtn.addEventListener('click', () => {
   undoStack.push(snapshot());
   restore(redoStack.pop());
   updateUndoRedoButtons();
+});
+
+recoverBtn.addEventListener('click', () => {
+  pushUndo();
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, coverCanvas.width, coverCanvas.height);
 });
 
 document.querySelectorAll('input[name="mode"]').forEach(r => {
