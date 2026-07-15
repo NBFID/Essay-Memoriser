@@ -281,7 +281,7 @@ function buildWordSpans(text) {
       textLayer.appendChild(document.createElement('br'));
       return;
     }
-    const sentences = line.split(/(?<=[.!?])\s+/);
+    const sentences = line.split(/(?<![Mm]r)(?<![Dd]r)(?<![Mm][ss])(?<![Jj]r)(?<![Ss]r)\.(?<![a-z])\s+(?=[A-Z])/);
     sentences.forEach(sentence => {
       if (sentence === '') return;
       const tokens = sentence.split(/(\s+)/);
