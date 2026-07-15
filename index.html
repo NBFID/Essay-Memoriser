@@ -249,13 +249,14 @@ startBtn.addEventListener('click', () => {
 });
 
 function sizeCoverCanvas() {
-  const rect = textLayer.getBoundingClientRect();
-  coverCanvas.width = rect.width;
-  coverCanvas.height = rect.height;
-  coverCanvas.style.width = rect.width + 'px';
-  coverCanvas.style.height = rect.height + 'px';
+  const w = textLayer.scrollWidth;
+  const h = textLayer.scrollHeight;
+  coverCanvas.width = w;
+  coverCanvas.height = h;
+  coverCanvas.style.width = w + 'px';
+  coverCanvas.style.height = h + 'px';
   ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, coverCanvas.width, coverCanvas.height);
+  ctx.fillRect(0, 0, w, h);
   undoStack = [];
   redoStack = [];
   updateUndoRedoButtons();
@@ -281,7 +282,7 @@ function buildWordSpans(text) {
       textLayer.appendChild(document.createElement('br'));
       return;
     }
-    const sentences = line.split(/(?<![Mm]r)(?<![Dd]r)(?<![Mm][ss])(?<![Jj]r)(?<![Ss]r)\.(?<![a-z])\s+(?=[A-Z])/);
+    const sentences = line.split(/(?<![Mm]r)(?<![Dd]r)(?<![Mm][ss])(?<![Jj]r)(?<![Ss]r)\.\s+(?=[A-Z])/);
     sentences.forEach(sentence => {
       if (sentence === '') return;
       const tokens = sentence.split(/(\s+)/);
