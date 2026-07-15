@@ -408,8 +408,8 @@ coverCanvas.addEventListener('click', (e) => {
     revealElement(el, p);
   } else {
     const sIndex = el.dataset.sentence;
-    const sentenceWords = textLayer.querySelectorAll(`.word[data-sentence="${sIndex}"]`);
-    sentenceWords.forEach(w => revealElement(w));
+    const sentenceEls = textLayer.querySelectorAll(`.word[data-sentence="${sIndex}"], .gap[data-sentence="${sIndex}"]`);
+    sentenceEls.forEach(w => revealElement(w));
   }
 });
 
