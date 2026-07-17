@@ -49,6 +49,12 @@
     left: 10px;
     cursor: crosshair;
   }
+  #lineCanvas {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    pointer-events: none;
+  }
   .word, .gap {
     display: inline;
   }
@@ -84,10 +90,14 @@
     outline: 2px solid #000;
     outline-offset: 2px;
   }
-  #eraserSizeLabel, #wholeUnit {
+  #subModeControls, #wholeUnit {
     display: none;
   }
-  #eraserSizeLabel.active, #wholeUnit.active {
+  #subModeControls.active {
+    display: inline-flex;
+    align-items: center;
+  }
+  #wholeUnit.active {
     display: inline;
   }
 </style>
@@ -101,14 +111,20 @@
 <button id="startBtn">Cover Essay</button>
 
 <div id="controls">
-  <label><input type="radio" name="mode" value="partial" checked> Partial (eraser)</label>
-  <label><input type="radio" name="mode" value="whole"> Whole (word/sentence)</label>
-  <label><input type="radio" name="mode" value="highlight"> Highlighter</label>
+  <label><input type="radio" name="tool" value="reveal" checked> Reveal</label>
+  <label><input type="radio" name="tool" value="recover"> Recover</label>
+  <label><input type="radio" name="tool" value="highlight"> Highlighter</label>
+
+  <span id="subModeControls">
+    <label><input type="radio" name="submode" value="whole" checked> Whole</label>
+    <label><input type="radio" name="submode" value="partial"> Partial</label>
+  </span>
+
   <select id="wholeUnit">
     <option value="word">Word at a time</option>
     <option value="sentence">Sentence at a time</option>
   </select>
-  <label id="eraserSizeLabel">Eraser size: <input type="range" id="eraserSize" min="10" max="80" value="30"></label>
+
   <span id="highlightControls">
     <button type="button" class="swatch selected" data-color="rgba(255,0,0,0.45)" style="background:rgba(255,0,0,0.45)" title="Red"></button>
     <button type="button" class="swatch" data-color="rgba(0,120,255,0.45)" style="background:rgba(0,120,255,0.45)" title="Blue"></button>
@@ -118,15 +134,17 @@
     <button type="button" class="swatch" data-color="rgba(155,0,200,0.45)" style="background:rgba(155,0,200,0.45)" title="Purple"></button>
     <button type="button" id="highlightEraserBtn">Highlight Eraser</button>
   </span>
+
   <button id="undoBtn" disabled>Undo</button>
   <button id="redoBtn" disabled>Redo</button>
-  <button id="recoverBtn">Re-cover</button>
+  <button id="coverAllBtn">Cover All</button>
   <button id="resetBtn">Reset / New Essay</button>
 </div>
 
 <div id="stage">
   <div id="textLayer"></div>
   <canvas id="coverCanvas"></canvas>
+  <canvas id="lineCanvas"></canvas>
 </div>
 
 <script>
@@ -137,22 +155,25 @@ const stage = document.getElementById('stage');
 const textLayer = document.getElementById('textLayer');
 const coverCanvas = document.getElementById('coverCanvas');
 const ctx = coverCanvas.getContext('2d');
+const lineCanvas = document.getElementById('lineCanvas');
+const lctx = lineCanvas.getContext('2d');
 const wholeUnit = document.getElementById('wholeUnit');
-const eraserSizeInput = document.getElementById('eraserSize');
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
-const recoverBtn = document.getElementById('recoverBtn');
-const eraserSizeLabel = document.getElementById('eraserSizeLabel');
+const coverAllBtn = document.getElementById('coverAllBtn');
+const subModeControls = document.getElementById('subModeControls');
 const highlightControls = document.getElementById('highlightControls');
 const highlightEraserBtn = document.getElementById('highlightEraserBtn');
 const swatches = Array.from(document.querySelectorAll('.swatch'));
 
-let mode = 'partial';
+let tool = 'reveal';       // 'reveal' | 'recover' | 'highlight'
+let subMode = 'whole';     // 'whole' | 'partial' (reveal/recover only)
 let drawing = false;
 let undoStack = [];
 let redoStack = [];
 let highlightColor = swatches[0].dataset.color;
 let highlightTool = 'color';
+let lineHeightPx = 0;
 
 function highlightableEls() {
   return textLayer.querySelectorAll('.word, .gap');
@@ -197,23 +218,31 @@ redoBtn.addEventListener('click', () => {
   updateUndoRedoButtons();
 });
 
-recoverBtn.addEventListener('click', () => {
+coverAllBtn.addEventListener('click', () => {
   pushUndo();
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, coverCanvas.width, coverCanvas.height);
 });
 
-document.querySelectorAll('input[name="mode"]').forEach(r => {
+document.querySelectorAll('input[name="tool"]').forEach(r => {
   r.addEventListener('change', () => {
-    mode = document.querySelector('input[name="mode"]:checked').value;
+    tool = document.querySelector('input[name="tool"]:checked').value;
+    updateModeUI();
+  });
+});
+
+document.querySelectorAll('input[name="submode"]').forEach(r => {
+  r.addEventListener('change', () => {
+    subMode = document.querySelector('input[name="submode"]:checked').value;
     updateModeUI();
   });
 });
 
 function updateModeUI() {
-  eraserSizeLabel.classList.toggle('active', mode === 'partial');
-  wholeUnit.classList.toggle('active', mode === 'whole');
-  highlightControls.classList.toggle('active', mode === 'highlight');
+  const isRevealOrRecover = tool === 'reveal' || tool === 'recover';
+  subModeControls.classList.toggle('active', isRevealOrRecover);
+  wholeUnit.classList.toggle('active', isRevealOrRecover && subMode === 'whole');
+  highlightControls.classList.toggle('active', tool === 'highlight');
 }
 updateModeUI();
 
@@ -251,15 +280,61 @@ startBtn.addEventListener('click', () => {
 function sizeCoverCanvas() {
   const w = textLayer.scrollWidth;
   const h = textLayer.scrollHeight;
+
+  const cs = getComputedStyle(textLayer);
+  lineHeightPx = parseFloat(cs.lineHeight);
+  if (!lineHeightPx || isNaN(lineHeightPx)) {
+    lineHeightPx = parseFloat(cs.fontSize) * 1.5;
+  }
+
   coverCanvas.width = w;
   coverCanvas.height = h;
   coverCanvas.style.width = w + 'px';
   coverCanvas.style.height = h + 'px';
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, w, h);
+
+  lineCanvas.width = w;
+  lineCanvas.height = h;
+  lineCanvas.style.width = w + 'px';
+  lineCanvas.style.height = h + 'px';
+  drawRuledLines();
+
   undoStack = [];
   redoStack = [];
   updateUndoRedoButtons();
+}
+
+// Ruled lines - drawn on a separate layer above the cover, never touched by
+// reveal/recover/highlight, so they can never be erased or covered over.
+function drawRuledLines() {
+  const w = lineCanvas.width;
+  const h = lineCanvas.height;
+  lctx.clearRect(0, 0, w, h);
+  lctx.strokeStyle = 'rgba(90,90,150,0.55)';
+  lctx.lineWidth = 1;
+  for (let y = lineHeightPx; y < h + 0.5; y += lineHeightPx) {
+    const ly = Math.round(y) + 0.5;
+    lctx.beginPath();
+    lctx.moveTo(0, ly);
+    lctx.lineTo(w, ly);
+    lctx.stroke();
+  }
+}
+
+// Every word/gap snaps vertically to its full text-line row (using the ruled-line
+// grid), not its own bounding rect, so adjacent reveals/covers tile with no gaps.
+function getRowRect(el) {
+  const canvasRect = coverCanvas.getBoundingClientRect();
+  const elRect = el.getBoundingClientRect();
+  const relTop = elRect.top - canvasRect.top;
+  const rowIndex = Math.max(0, Math.round(relTop / lineHeightPx));
+  return {
+    x: elRect.left - canvasRect.left - 0.5,
+    y: rowIndex * lineHeightPx,
+    width: elRect.width + 1,
+    height: lineHeightPx
+  };
 }
 
 window.addEventListener('resize', () => {
@@ -312,123 +387,90 @@ function buildWordSpans(text) {
   });
 }
 
-// PARTIAL ERASE (canvas scrubbing)
-function getPos(e) {
-  const rect = coverCanvas.getBoundingClientRect();
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-  return { x: clientX - rect.left, y: clientY - rect.top };
+// Paint a single word/gap element according to the active tool. Reveal/recover
+// snap to the element's full text-line row (see getRowRect) so a drag across a
+// whole paragraph tiles cleanly with no gaps or leftover slivers.
+function paintEl(el) {
+  if (tool === 'highlight') {
+    el.style.backgroundColor = highlightTool === 'erase' ? '' : highlightColor;
+    return;
+  }
+  const r = getRowRect(el);
+  if (tool === 'reveal') {
+    ctx.clearRect(r.x, r.y, r.width, r.height);
+  } else if (tool === 'recover') {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(r.x, r.y, r.width, r.height);
+  }
 }
 
-function erase(x, y) {
-  const size = parseInt(eraserSizeInput.value, 10);
-  ctx.globalCompositeOperation = 'destination-out';
-  ctx.beginPath();
-  ctx.arc(x, y, size / 2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalCompositeOperation = 'source-over';
+function elementAt(clientX, clientY) {
+  coverCanvas.style.pointerEvents = 'none';
+  const el = document.elementFromPoint(clientX, clientY);
+  coverCanvas.style.pointerEvents = 'auto';
+  if (!el || !el.classList) return null;
+  if (!el.classList.contains('word') && !el.classList.contains('gap')) return null;
+  return el;
+}
+
+function paintAt(clientX, clientY) {
+  const el = elementAt(clientX, clientY);
+  if (el) paintEl(el);
+}
+
+// PARTIAL drag (reveal/recover, word-snapped) and HIGHLIGHTER both paint
+// continuously on drag; WHOLE reveal/recover paint once per click (below).
+function isDragTool() {
+  return tool === 'highlight' || ((tool === 'reveal' || tool === 'recover') && subMode === 'partial');
 }
 
 coverCanvas.addEventListener('mousedown', (e) => {
-  if (mode === 'partial') {
-    drawing = true;
-    pushUndo();
-    const p = getPos(e);
-    erase(p.x, p.y);
-  } else if (mode === 'highlight') {
-    drawing = true;
-    pushUndo();
-    applyHighlightAt(e.clientX, e.clientY);
-  }
+  if (!isDragTool()) return;
+  drawing = true;
+  pushUndo();
+  paintAt(e.clientX, e.clientY);
 });
 coverCanvas.addEventListener('mousemove', (e) => {
   if (!drawing) return;
-  if (mode === 'partial') {
-    const p = getPos(e);
-    erase(p.x, p.y);
-  } else if (mode === 'highlight') {
-    applyHighlightAt(e.clientX, e.clientY);
-  }
+  paintAt(e.clientX, e.clientY);
 });
 window.addEventListener('mouseup', () => drawing = false);
 
 coverCanvas.addEventListener('touchstart', (e) => {
+  if (!isDragTool()) return;
   const t = e.touches[0];
-  if (mode === 'partial') {
-    drawing = true;
-    pushUndo();
-    const p = getPos(e);
-    erase(p.x, p.y);
-  } else if (mode === 'highlight') {
-    drawing = true;
-    pushUndo();
-    applyHighlightAt(t.clientX, t.clientY);
-  } else {
-    return;
-  }
+  drawing = true;
+  pushUndo();
+  paintAt(t.clientX, t.clientY);
   e.preventDefault();
 }, { passive: false });
 coverCanvas.addEventListener('touchmove', (e) => {
   if (!drawing) return;
   const t = e.touches[0];
-  if (mode === 'partial') {
-    const p = getPos(e);
-    erase(p.x, p.y);
-  } else if (mode === 'highlight') {
-    applyHighlightAt(t.clientX, t.clientY);
-  }
+  paintAt(t.clientX, t.clientY);
   e.preventDefault();
 }, { passive: false });
 coverCanvas.addEventListener('touchend', () => drawing = false);
 
-// HIGHLIGHTER - snaps to whole words/gaps under the pointer, no freehand jitter
-function applyHighlightAt(clientX, clientY) {
-  coverCanvas.style.pointerEvents = 'none';
-  const el = document.elementFromPoint(clientX, clientY);
-  coverCanvas.style.pointerEvents = 'auto';
-
-  if (!el || !el.classList) return;
-  if (!el.classList.contains('word') && !el.classList.contains('gap')) return;
-
-  el.style.backgroundColor = highlightTool === 'erase' ? '' : highlightColor;
-}
-
-// WHOLE ERASE (word/sentence) - click on the cover to reveal
+// WHOLE reveal/recover (word/sentence) - single click
 coverCanvas.addEventListener('click', (e) => {
-  if (mode !== 'whole') return;
-  const p = getPos(e);
-  const stageRect = stage.getBoundingClientRect();
-  const canvasRect = coverCanvas.getBoundingClientRect();
-  // find element under the point using elementFromPoint, temporarily hide canvas
-  coverCanvas.style.pointerEvents = 'none';
-  const el = document.elementFromPoint(e.clientX, e.clientY);
-  coverCanvas.style.pointerEvents = 'auto';
+  if (tool === 'highlight') return;
+  if (subMode !== 'whole') return;
 
-  if (!el || !el.classList || !el.classList.contains('word')) return;
+  const el = elementAt(e.clientX, e.clientY);
+  if (!el || !el.classList.contains('word')) return;
 
   pushUndo();
 
   const unit = wholeUnit.value;
   if (unit === 'word') {
-    revealElement(el, p);
+    paintEl(el);
   } else {
     const sIndex = el.dataset.sentence;
     const sentenceEls = textLayer.querySelectorAll(`.word[data-sentence="${sIndex}"], .gap[data-sentence="${sIndex}"]`);
-    sentenceEls.forEach(w => revealElement(w));
+    sentenceEls.forEach(w => paintEl(w));
   }
 });
-
-function revealElement(el, atPoint) {
-  const wordRect = el.getBoundingClientRect();
-  const canvasRect = coverCanvas.getBoundingClientRect();
-  const x = wordRect.left - canvasRect.left;
-  const y = wordRect.top - canvasRect.top;
-  const w = wordRect.width;
-  const h = wordRect.height;
-  ctx.globalCompositeOperation = 'destination-out';
-  ctx.clearRect(x - 2, y - 2, w + 4, h + 4);
-  ctx.globalCompositeOperation = 'source-over';
-}
 </script>
 
 </body>
