@@ -866,6 +866,18 @@ function defaultTitles(n, pair, sides) {
   });
 }
 
+// An essay saved with the plain "Body 1, Body 2" headings picks up names by text on its own,
+// unless plain headings were asked for
+function upgradeTitles(rec) {
+  if (!rec.titles || rec.pair || rec.plain) return;
+  const secs = detectSections(rec.text);
+  if (secs.length !== rec.titles.length || rec.titles.join('|') !== defaultTitles(secs.length).join('|')) return;
+  const found = detectTexts(secs);
+  if (!found) return;
+  rec.pair = found.names;
+  rec.titles = defaultTitles(secs.length, found.names, found.sides);
+}
+
 /* ---------- essays screen ---------- */
 
 function titleOf(rec) {
@@ -994,7 +1006,7 @@ function openEditor(rec) {
   editingId = rec ? rec.id : null;
   essayInput.value = rec ? rec.text : '';
   detect.checked = rec ? !!rec.titles : true;
-  naming.value = rec && rec.titles && !rec.pair ? 'single' : 'text';
+  naming.value = rec && rec.plain ? 'single' : 'text';
   namesTouched = !!(rec && rec.pair);
   textA.value = rec && rec.pair ? rec.pair[0] : '';
   textB.value = rec && rec.pair ? rec.pair[1] : '';
@@ -1058,6 +1070,7 @@ startBtn.addEventListener('click', () => {
   }
   rec.titles = secs ? secs.map((s, i) => s.title.trim() || 'Paragraph ' + (i + 1)) : undefined;
   rec.pair = secs && secs.pair || undefined;
+  rec.plain = secs && naming.value === 'single' || undefined;
   closeEditor();
   openEssay(rec, true);
 });
@@ -2488,6 +2501,7 @@ modes.addEventListener('click', (e) => {
 /* ---------- start ---------- */
 
 numberEssays();  // essays saved before numbering existed
+store.essays.forEach(upgradeTitles);
 applyOpts();
 updateTimer();
 const reopen = store.essays.find(e => e.id === store.openId);
