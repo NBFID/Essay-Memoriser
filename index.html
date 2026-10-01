@@ -366,7 +366,14 @@ function newId() {
 /* ---------- essays screen ---------- */
 
 function titleOf(rec) {
-  return rec.title || rec.text.trim().split('\n')[0];
+  return rec.title || 'Essay ' + rec.num;
+}
+
+// Essays are numbered in the order they were added; a number sticks once given,
+// so deleting Essay 2 doesn't rename Essay 3
+function numberEssays() {
+  let next = Math.max(0, ...store.essays.map(e => e.num || 0)) + 1;
+  store.essays.forEach(e => { if (!e.num) e.num = next++; });
 }
 
 function daysAgo(t) {
@@ -389,13 +396,13 @@ function renderSaved() {
   savedList.textContent = '';
   exportBtn.hidden = !store.essays.length;
   if (!store.essays.length) return;
-  store.essays.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0)).forEach(rec => {
+  store.essays.slice().sort((a, b) => a.num - b.num).forEach(rec => {
     const row = document.createElement('div');
     row.className = 'row';
     const open = document.createElement('button');
     open.className = 'link open';
     open.textContent = titleOf(rec);
-    open.title = 'Carry on where you left off';
+    open.title = rec.text.trim().split('\n')[0];
     open.addEventListener('click', () => openEssay(rec, false));
 
     const misses = (rec.missed || '').split('1').length - 1;
@@ -420,7 +427,7 @@ function renderSaved() {
     action('Rename', () => {
       const name = prompt('Name this essay', titleOf(rec));
       if (name === null) return;
-      rec.title = name.trim() || undefined;  // blank goes back to the first line
+      rec.title = name.trim() || undefined;  // blank goes back to "Essay N"
       saveStore();
       renderSaved();
     });
@@ -460,6 +467,7 @@ startBtn.addEventListener('click', () => {
   if (!rec) {
     rec = { id: newId() };
     store.essays.push(rec);
+    numberEssays();
   }
   if (rec.text !== text) {
     // the words changed, so per-word highlights and misses no longer line up
@@ -502,13 +510,16 @@ importFile.addEventListener('change', async () => {
     if (!rec || typeof rec.text !== 'string' || !rec.text.trim()) return;
     const mine = store.essays.find(e => e.id === rec.id || e.text === rec.text);
     if (!mine) {
-      store.essays.push({ ...rec, id: rec.id || newId() });
+      // keep its number from the other device unless that number is already taken here
+      const num = store.essays.some(e => e.num === rec.num) ? undefined : rec.num;
+      store.essays.push({ ...rec, id: rec.id || newId(), num });
       added++;
     } else if ((rec.updated || 0) > (mine.updated || 0)) {
-      Object.assign(mine, rec, { id: mine.id });
+      Object.assign(mine, rec, { id: mine.id, num: mine.num });
       updated++;
     }
   });
+  numberEssays();
   saveStore();
   showSetup();
   alert(added || updated ? 'Restored ' + added + ' new and ' + updated + ' updated.' : 'Nothing new in that backup.');
@@ -1206,6 +1217,7 @@ document.addEventListener('keydown', (e) => {
 
 /* ---------- start ---------- */
 
+numberEssays();  // essays saved before numbering existed
 applyOpts();
 updateTimer();
 const reopen = store.essays.find(e => e.id === store.openId);
