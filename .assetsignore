@@ -4,3 +4,5 @@
 .wrangler
 wrangler.jsonc
 .assetsignore
+tools
+node_modules

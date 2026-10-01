@@ -332,6 +332,8 @@
   .word.missed { color: var(--red); }
   @keyframes flash-ok { from { background-color: rgba(0,190,0,0.4); } }
   @keyframes flash-miss { from { background-color: rgba(255,0,0,0.5); } }
+  @keyframes flash-near { from { background-color: rgba(255,170,0,0.6); } }
+  .flash-near { animation: flash-near 1.2s ease-out; }
   .flash-ok { animation: flash-ok 0.6s ease-out; }
   .flash-miss { animation: flash-miss 1s ease-out; }
 
@@ -477,6 +479,7 @@
             <label><input type="checkbox" data-opt="help"> Help line</label>
             <div class="head">Check</div>
             <label><input type="checkbox" data-opt="typing"> Type each word to check it</label>
+            <label><input type="checkbox" data-opt="syn"> Accept close synonyms</label>
             <div class="line">Hide <select id="eraseStep">
               <option value="10">10</option>
               <option value="20">20</option>
@@ -581,7 +584,7 @@
 const PALETTE = ['rgba(255,0,0,0.45)', 'rgba(0,120,255,0.45)', 'rgba(255,235,0,0.55)', 'rgba(0,190,0,0.45)', 'rgba(255,140,0,0.5)', 'rgba(155,0,200,0.45)'];
 const COLOUR_NAMES = ['Red', 'Blue', 'Yellow', 'Green', 'Orange', 'Purple'];
 const STORE_KEY = 'essay-eraser';
-const DEFAULT_OPTS = { hints: false, typing: false, count: false, lines: true, help: true, heat: false, eraseStep: 20, part: 1, timerMins: 40, colour: 2, rate: 1, sayAnswers: true, answer: 'words' };
+const DEFAULT_OPTS = { hints: false, typing: false, count: false, lines: true, help: true, heat: false, eraseStep: 20, part: 1, timerMins: 40, colour: 2, rate: 1, sayAnswers: true, answer: 'words', syn: true };
 
 const setup = document.getElementById('setup');
 const work = document.getElementById('work');
@@ -813,6 +816,53 @@ function sameWord(g, key) {
   if (Math.abs(g.length - key.length) <= slips && editDistance(g, key) <= slips) return true;
   const a = stem(g), b = stem(key);
   return a.length >= 3 && (a === b || (b.length >= 5 && Math.abs(a.length - b.length) <= 1 && editDistance(a, b) <= 1));
+}
+
+/* ---------- synonyms ---------- */
+
+// synonyms.txt has one group of near-synonyms per line; it's fetched once an essay is open
+let synsets = null;  // word -> the lines it is on
+let synAsked = false;
+
+function loadSynonyms() {
+  if (synAsked) return;
+  synAsked = true;
+  fetch('synonyms.txt').then(r => r.ok ? r.text() : '').then(text => {
+    const map = new Map();
+    text.split('\n').forEach((line, id) => {
+      if (!line || line[0] === '#') return;
+      line.split(' ').forEach(w => { const at = map.get(w); at ? at.push(id) : map.set(w, [id]); });
+    });
+    if (map.size) synsets = map;
+  }).catch(() => { synAsked = false; });
+}
+
+const IRREGULAR = {
+  was: 'be', were: 'be', been: 'be', has: 'have', had: 'have', shown: 'show', seen: 'see', saw: 'see', made: 'make',
+  took: 'take', taken: 'take', gave: 'give', given: 'give', went: 'go', gone: 'go', came: 'come', became: 'become',
+  began: 'begin', begun: 'begin', wrote: 'write', written: 'write', knew: 'know', known: 'know', thought: 'think',
+  found: 'find', felt: 'feel', left: 'leave', led: 'lead', held: 'hold', brought: 'bring', told: 'tell', said: 'say',
+  got: 'get', lost: 'lose', kept: 'keep', meant: 'mean', built: 'build', sought: 'seek', drew: 'draw', drawn: 'draw',
+  grew: 'grow', grown: 'grow', chose: 'choose', chosen: 'choose', spoke: 'speak', spoken: 'speak', fell: 'fall',
+  fallen: 'fall', rose: 'rise', risen: 'rise', broke: 'break', broken: 'break', men: 'man', women: 'woman',
+  children: 'child', better: 'good', best: 'good', worse: 'bad', worst: 'bad'
+};
+
+// The dictionary forms a word could be: "explores", "explored" and "exploring" are all "explore"
+function lemmas(w) {
+  const out = [w];
+  if (IRREGULAR[w]) out.push(IRREGULAR[w]);
+  [[/ies$/, 'y'], [/ied$/, 'y'], [/es$/, ''], [/s$/, ''], [/ed$/, ''], [/d$/, ''], [/ing$/, ''], [/ing$/, 'e'],
+    [/(.)\1ed$/, '$1'], [/(.)\1ing$/, '$1'], [/ily$/, 'y'], [/ly$/, ''], [/er$/, ''], [/est$/, '']]
+    .forEach(([re, to]) => { if (re.test(w)) out.push(w.replace(re, to)); });
+  return out.filter(x => synsets.has(x));
+}
+
+// Close in meaning, however differently spelt: "depicts" for "portrays". Little words don't count.
+function synonym(g, key) {
+  if (!opts.syn || !synsets || g.length < 3 || STOP.has(key) || STOP.has(g)) return false;
+  const mine = new Set(lemmas(g).flatMap(x => synsets.get(x)));
+  return mine.size > 0 && lemmas(key).some(x => synsets.get(x).some(id => mine.has(id)));
 }
 
 /* ---------- finding the paragraphs in pasted text ---------- */
@@ -1204,6 +1254,7 @@ function openEssay(rec, fresh, practise) {
   setup.hidden = true;
   work.hidden = false;
   essayTitle.textContent = titleOf(rec);
+  loadSynonyms();
   buildTokens(rec.text);
   buildUnits();
   fillFocus();
@@ -1704,13 +1755,14 @@ function commit() {
   draw();
 }
 
-textLayer.addEventListener('animationend', e => e.target.classList.remove('flash-ok', 'flash-miss'));
+textLayer.addEventListener('animationend', e => e.target.classList.remove('flash-ok', 'flash-miss', 'flash-near'));
 
-function flash(i, ok) {
+// near: accepted, but not the exact word, so it flashes amber to make you look at it
+function flash(i, ok, near) {
   const el = words[i].el;
-  el.classList.remove('flash-ok', 'flash-miss');
+  el.classList.remove('flash-ok', 'flash-miss', 'flash-near');
   void el.offsetWidth;  // restart the animation if it's already running
-  el.classList.add(ok ? 'flash-ok' : 'flash-miss');
+  el.classList.add(!ok ? 'flash-miss' : near ? 'flash-near' : 'flash-ok');
 }
 
 /* ---------- edits and undo ---------- */
@@ -2077,7 +2129,7 @@ function revealWord(n) {
 }
 
 // A word has been answered: show it, score it and move on. A right answer clears an earlier miss.
-function resolve(n, ok) {
+function resolve(n, ok, near) {
   ok ? right[n]++ : wrong[n]++;
   dirty = true;
   retry = -1;
@@ -2086,7 +2138,7 @@ function resolve(n, ok) {
   revealWord(n);
   setMissed(n, !ok);
   endAction();
-  flash(n, ok);
+  flash(n, ok, near);
   afterStep();
 }
 
@@ -2125,7 +2177,8 @@ function checkTyped() {
   }
   typed = '';
   typeIn.value = '';
-  if (sameWord(g, key)) return resolve(n, true);
+  // a quote has to be the quote: typos are fine there, a different word isn't
+  if (sameWord(g, key) || (words[n].q < 0 && synonym(g, key))) return resolve(n, true, g !== key);
   // it's the word after: the one in between was left out
   const n2 = nextAfter(n);
   if (n2 >= 0 && words[n2].key.length >= 4 && sameWord(g, words[n2].key)) {
@@ -2355,6 +2408,15 @@ function grade(text, lo, hi) {
   shown.forEach((tok, t) => subKeys(tok).forEach(k => B.push({ k, t })));
   const pairs = lcsPairs(A.map(x => x.k), B.map(x => x.k), (x, y) => sameWord(y, x));
   const hitA = new Set(pairs.map(p => p[0])), hitB = new Set(pairs.map(p => p[1]));
+  // a word swapped for a close synonym still counts (outside quotes)
+  let ia = 0, ib = 0;
+  [...pairs, [A.length, B.length]].forEach(([x, y]) => {
+    if (x - ia === y - ib) for (let d = 0; ia + d < x; d++) {
+      if (words[A[ia + d].i].q < 0 && synonym(B[ib + d].k, A[ia + d].k)) { hitA.add(ia + d); hitB.add(ib + d); }
+    }
+    ia = x + 1;
+    ib = y + 1;
+  });
   const dropped = new Set(), extra = new Set();
   A.forEach((x, n) => { if (!hitA.has(n)) dropped.add(x.i); });
   B.forEach((x, n) => { if (!hitB.has(n)) extra.add(x.t); });
@@ -2571,7 +2633,7 @@ function how() {
   const touch = matchMedia('(pointer: coarse)').matches;
   const stuck = touch ? ' "Show word" helps when you are stuck.' : ' Tab shows a word you are stuck on.';
   if (opts.answer === 'letters') return 'Type the first letter of each hidden word.' + stuck;
-  if (opts.answer === 'words') return 'Type each hidden word, then Space. Small slips are forgiven.' + stuck;
+  if (opts.answer === 'words') return 'Type each hidden word, then Space. Slips and close synonyms pass (amber means it was not the exact word).' + stuck;
   return touch ? 'Say it, tapping Word to check each one. Long-press any you got wrong.'
     : 'Say it, pressing Space to check each word. Right-click any you got wrong.';
 }
