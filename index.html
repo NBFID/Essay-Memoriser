@@ -480,6 +480,13 @@
               <option value="33">33</option>
               <option value="50">50</option>
             </select> % each time</div>
+            <div class="head">Practise</div>
+            <div class="line">Learn <select id="chunkSel">
+              <option value="30">about 30 words</option>
+              <option value="50">about 50 words</option>
+              <option value="80">about 80 words</option>
+              <option value="0">a whole paragraph</option>
+            </select> at a time</div>
             <div class="head">Timed write</div>
             <div class="line"><input type="number" id="timerMins" min="1" max="300"> min <button id="timerBtn" class="btn">Start</button></div>
             <div class="head">Export</div>
@@ -569,7 +576,7 @@
 const PALETTE = ['rgba(255,0,0,0.45)', 'rgba(0,120,255,0.45)', 'rgba(255,235,0,0.55)', 'rgba(0,190,0,0.45)', 'rgba(255,140,0,0.5)', 'rgba(155,0,200,0.45)'];
 const COLOUR_NAMES = ['Red', 'Blue', 'Yellow', 'Green', 'Orange', 'Purple'];
 const STORE_KEY = 'essay-eraser';
-const DEFAULT_OPTS = { hints: false, typing: false, count: false, lines: true, help: true, heat: false, eraseStep: 20, timerMins: 40, colour: 2, rate: 1, sayAnswers: true };
+const DEFAULT_OPTS = { hints: false, typing: false, count: false, lines: true, help: true, heat: false, eraseStep: 20, chunk: 50, timerMins: 40, colour: 2, rate: 1, sayAnswers: true };
 
 const setup = document.getElementById('setup');
 const work = document.getElementById('work');
@@ -641,6 +648,7 @@ const intro = document.getElementById('intro');
 const nameInput = document.getElementById('nameInput');
 const backupNote = document.getElementById('backupNote');
 const focusSel = document.getElementById('focusSel');
+const chunkSel = document.getElementById('chunkSel');
 
 // Saved in localStorage: { essays: [{ id, num, title, text, titles, pair, covered, hl, missed, right, wrong,
 // ladder, draft, questions, cursor, updated }], openId, opts, timerEnd }
@@ -655,6 +663,7 @@ let words = [];        // { el, tok, s: sentence index, p: paragraph index, q: q
 let gaps = [];         // { el, prev, next: neighbouring word indices on the same line (-1 if none), boxes }
 let nodes = [];        // { el, p } everything in the text layer, so one paragraph can be shown on its own
 let paras = [];        // { lo, hi } word range of each paragraph
+let units = [];        // { p, lo, hi, part, of, whole } what Practise takes on at a time
 let quotes = [];       // { lo, hi } word range of each quote
 let covered = [];      // per word
 let hl = [];           // per word: PALETTE index, -1 for none
@@ -672,8 +681,8 @@ let gesture = null;
 let lastTap = null;
 let dirty = false;     // something was practised since the last save
 let view = 'essay';    // 'essay' | 'blank' | 'adapt'
-let scope = null;      // { p, lo, hi } when only one paragraph is on screen
-let ladder = null;     // { p } while a Practise session is running
+let scope = null;      // { p, lo, hi } when only one paragraph, or part of one, is on screen
+let ladder = null;     // { u } while a Practise session is running: the unit being worked on
 let forceHints = false;
 
 // Layout, measured from the DOM
@@ -1167,6 +1176,7 @@ function openEssay(rec, fresh, practise) {
   work.hidden = false;
   essayTitle.textContent = titleOf(rec);
   buildTokens(rec.text);
+  buildUnits();
   fillFocus();
   paintHeads();
   setPractising(false);
@@ -1227,10 +1237,10 @@ function paraName(p) {
   return essay.titles && essay.titles[p] || 'Paragraph ' + (p + 1);
 }
 
-// Show one paragraph on its own (null = the whole essay)
-function setScope(p) {
-  scope = p == null ? null : { p, lo: paras[p].lo, hi: paras[p].hi };
-  nodes.forEach(n => { n.el.hidden = !!scope && n.p !== p; });
+// Show one paragraph on its own, or just words lo..hi of it (null = the whole essay)
+function setScope(p, lo, hi) {
+  scope = p == null ? null : { p, lo: lo ?? paras[p].lo, hi: hi ?? paras[p].hi };
+  nodes.forEach(n => { n.el.hidden = !!scope && (n.p !== p || (n.w != null && (n.w < scope.lo || n.w > scope.hi))); });
   focusSel.value = scope ? p : '';
   if (scope && (cursor < scope.lo - 1 || cursor > scope.hi)) cursor = scope.lo - 1;
   if (view === 'essay') { measure(); draw(); }
@@ -1247,8 +1257,10 @@ function fillFocus() {
 function focusPara(p) {
   if (ladder) {
     if (p == null) return exitPractise();
-    ladder.p = p;
-    ladder.picked = true;
+    // its first part still to learn; if there is none, the paragraph itself, to look over
+    const ks = unitsOf(p), k = ks.find(k => essay.steps[k] < MASTERED);
+    ladder.u = k ?? ks[ks.length - 1];
+    ladder.picked = k == null;
     return presentStep();
   }
   const was = scope;
@@ -1267,11 +1279,19 @@ function setPractising(on) {
 
 // Each heading says how far up the ladder its paragraph is
 function paintHeads() {
+  const fresh = Array.isArray(essay.steps) && essay.stepsKey === unitsKey();
   paras.forEach((pp, p) => {
     if (!pp.head) return;
-    const st = essay.ladder && essay.ladder[p] || 0;
     pp.head.textContent = paraName(p);
-    if (st) pp.head.append(el('small', { textContent: st >= MASTERED ? ' · mastered' : ' · step ' + (st + 1) + ' of ' + STEPS.length }));
+    if (!fresh) return;
+    const ks = unitsOf(p), st = k => essay.steps[k];
+    const parts = ks.filter(k => !units[k].whole), done = parts.filter(k => st(k) >= MASTERED).length;
+    let note = '';
+    if (ks.every(k => st(k) >= MASTERED)) note = 'mastered';
+    else if (parts.length === 1) note = st(ks[0]) ? 'step ' + (st(ks[0]) + 1) + ' of ' + STEPS.length : '';
+    else if (done === parts.length) note = 'joining the parts';
+    else if (done || parts.some(k => st(k))) note = 'part ' + (done + 1) + ' of ' + parts.length;
+    if (note) pp.head.append(el('small', { textContent: ' · ' + note }));
   });
 }
 
@@ -1297,7 +1317,7 @@ function fillBar(bar, text, buttons = [], extra) {
     if (text.step != null) {
       const steps = el('span', { className: 'steps' });
       STEPS.forEach((_, k) => steps.append(el('i', { className: k <= text.step ? 'on' : '' })));
-      steps.append(el('em', { textContent: 'Step ' + (text.step + 1) + ' of ' + STEPS.length + ': ' + STEPS[text.step] }));
+      steps.append(el('em', { textContent: 'Step ' + (text.step + 1) + ' of ' + STEPS.length + ': ' + STEPS[text.step] + (text.tail ? '  ·  ' + text.tail : '') }));
       msg.append(steps);
     }
     if (text.text) msg.append(el('span', { textContent: text.text }));
@@ -1323,6 +1343,7 @@ function applyOpts() {
   if (!opts.typing) typed = '';
   document.querySelectorAll('[data-opt]').forEach(c => { c.checked = !!opts[c.dataset.opt]; });
   eraseStep.value = opts.eraseStep;
+  chunkSel.value = opts.chunk;
   timerMins.value = opts.timerMins;
   const c = PALETTE[opts.colour] || PALETTE[0];
   hlDot.style.background = `linear-gradient(${c}, ${c}), #fff`;  // the colour as it looks on the page
@@ -1340,6 +1361,14 @@ document.querySelectorAll('[data-opt]').forEach(c => {
   c.addEventListener('change', () => setOpt(c.dataset.opt, c.checked));
 });
 eraseStep.addEventListener('change', () => setOpt('eraseStep', +eraseStep.value));
+// a new part size re-cuts the essay; mastered paragraphs stay mastered
+chunkSel.addEventListener('change', () => {
+  setOpt('chunk', +chunkSel.value);
+  if (!essay) return;
+  if (ladder) exitPractise();
+  buildUnits();
+  paintHeads();
+});
 timerMins.addEventListener('change', () => setOpt('timerMins', Math.min(300, Math.max(1, Math.round(+timerMins.value) || 40))));
 hideHelp.addEventListener('click', () => setOpt('help', false));
 
@@ -1454,7 +1483,8 @@ function buildTokens(text) {
         if (endsSentence(tok, lineWords[w + 1])) s++;
         w++;
       }
-      nodes.push({ el: span, p });
+      // w: the word a node belongs with, so part of a paragraph can be shown on its own
+      nodes.push({ el: span, p, w: /^\s/.test(tok) && !w ? words.length : words.length - 1 });
       textLayer.appendChild(span);
     });
     if (lineWords.length) s++;
@@ -2142,6 +2172,8 @@ function blankTargets() {
   const t = [{ id: 'all', label: 'the whole essay', lo: 0, hi: words.length - 1 }];
   if (paras.length < 2) return t;
   paras.forEach((pp, p) => t.push({ id: 'p' + p, label: paraName(p), lo: pp.lo, hi: pp.hi }));
+  const u = ladder && units[ladder.u];
+  if (u && u.of > 1 && !u.whole) t.push({ id: 'u' + ladder.u, label: unitName(u), lo: u.lo, hi: u.hi });
   // "Tempest BP1" then "Hag-Seed BP1" are one paragraph in the exam
   const bp = p => paraName(p).match(/^(.+) BP(\d+)$/) || [];
   for (let p = 0; p + 1 < paras.length; p++) {
@@ -2238,19 +2270,93 @@ blankCheck.addEventListener('click', () => {
   saveNow();
 });
 
-/* ---------- practise: a ladder for each paragraph ---------- */
+/* ---------- practise: a ladder for each part ---------- */
 
-// Each paragraph climbs from reading it to writing it on a blank page
+// Each part climbs from reading it to writing it on a blank page
 const STEPS = ['Read', 'First letters', 'A third hidden', 'Two thirds hidden', 'Blank page'];
 const MASTERED = STEPS.length;
-const PASS = 90;  // % of a paragraph to get right on the blank page
+const PASS = 90;  // % of a part to get right on the blank page
+const JOIN = 3;   // a whole paragraph starts this far up: its parts are already learned
+
+// How much to take on at a time. A paragraph is cut at sentence ends into even parts of about
+// opts.chunk words (one up to half as long again stays whole). Once its parts are learned,
+// the whole paragraph comes back to be joined up.
+function buildUnits() {
+  units = [];
+  paras.forEach((pp, p) => {
+    const sents = [];  // { lo, hi, n: words } for each sentence
+    for (let i = pp.lo; i <= pp.hi; i++) {
+      const last = sents[sents.length - 1];
+      if (last && words[i].s === words[last.hi].s) last.hi = i;
+      else sents.push({ lo: i, hi: i, n: 0 });
+      if (words[i].key) sents[sents.length - 1].n++;
+    }
+    const total = sents.reduce((a, s) => a + s.n, 0);
+    const k = !opts.chunk || total <= opts.chunk * 1.5 ? 1 : Math.min(sents.length, Math.round(total / opts.chunk));
+    let lo = pp.lo, run = 0, part = 0;
+    sents.forEach((s, j) => {
+      run += s.n;
+      const next = sents[j + 1], cuts = k - 1 - part;
+      if (!next || !cuts) return;
+      // cut here if the next sentence would overshoot an even share, or there's only one sentence left per part
+      if (sents.length - 1 - j === cuts || run + next.n / 2 >= total * (part + 1) / k) {
+        units.push({ p, lo, hi: s.hi, part, of: k });
+        lo = next.lo;
+        part++;
+      }
+    });
+    units.push({ p, lo, hi: pp.hi, part, of: k });
+    if (k > 1) units.push({ p, lo: pp.lo, hi: pp.hi, of: k, whole: true });
+  });
+}
+
+const unitsKey = () => (opts.chunk || 0) + ':' + units.length;
+const unitsOf = p => units.map((u, k) => u.p === p ? k : -1).filter(k => k >= 0);
+const firstStep = u => u.whole ? JOIN : 0;
+
+function unitName(u) {
+  const name = paraName(u.p);
+  return u.of === 1 ? name : u.whole ? name + ' · whole paragraph' : name + ' · part ' + (u.part + 1) + ' of ' + u.of;
+}
+
+// The blank page target for a unit
+function blankId(k) {
+  const u = units[k];
+  return u.of === 1 || u.whole ? 'p' + u.p : 'u' + k;
+}
+
+// Progress is kept per unit. If the essay has been cut differently since, start again,
+// keeping the paragraphs that were already mastered.
+function initSteps() {
+  if (Array.isArray(essay.steps) && essay.stepsKey === unitsKey()) return;
+  const old = Array.isArray(essay.ladder) && essay.ladder.length === paras.length ? essay.ladder : [];
+  essay.steps = units.map(u => old[u.p] >= MASTERED ? MASTERED : firstStep(u));
+  essay.stepsKey = unitsKey();
+  syncLadder();
+}
+
+// The essays list shows progress by paragraph: 0 untouched, 1 under way, MASTERED done
+function syncLadder() {
+  essay.ladder = paras.map((_, p) => {
+    const ks = unitsOf(p);
+    if (ks.every(k => essay.steps[k] >= MASTERED)) return MASTERED;
+    return ks.some(k => essay.steps[k] > firstStep(units[k])) ? 1 : 0;
+  });
+}
+
+function setStep(k, st) {
+  essay.steps[k] = Math.min(MASTERED, Math.max(0, st));
+  syncLadder();
+  dirty = true;
+  saveNow();
+}
 
 function startPractise() {
   stopLive();
-  if (!Array.isArray(essay.ladder) || essay.ladder.length !== paras.length) essay.ladder = new Array(paras.length).fill(0);
-  const p = essay.ladder.findIndex(s => s < MASTERED);
-  ladder = { p: Math.max(p, 0) };
-  p < 0 ? ladderDone() : presentStep();
+  initSteps();
+  const k = essay.steps.findIndex(s => s < MASTERED);
+  ladder = { u: Math.max(k, 0) };
+  k < 0 ? ladderDone() : presentStep();
 }
 
 function exitPractise() {
@@ -2263,92 +2369,94 @@ function exitPractise() {
   setScope(null);
 }
 
-const ladderNav = () => [['Skip paragraph', nextParagraph, 'link'], ['Exit', exitPractise, 'link']];
+// Confident already: call it mastered and move on
+function knowIt() {
+  setStep(ladder.u, MASTERED);
+  nextUnit();
+}
+
+const ladderNav = () => [['I know this', knowIt], ['Skip for now', nextUnit, 'link'], ['Exit', exitPractise, 'link']];
 
 function ladderMsg(step, text) {
-  return { title: `${paraName(ladder.p)} · paragraph ${ladder.p + 1} of ${paras.length}`, step, text };
+  const done = essay.steps.filter(s => s >= MASTERED).length;
+  return { title: unitName(units[ladder.u]), step, text, tail: done + ' of ' + units.length + ' done' };
 }
 
 function moveStep(d) {
-  const lad = essay.ladder;
-  lad[ladder.p] = Math.min(MASTERED, Math.max(0, lad[ladder.p] + d));
-  dirty = true;
-  saveNow();
+  setStep(ladder.u, essay.steps[ladder.u] + d);
   presentStep();
 }
 
 function presentStep() {
-  const p = ladder.p, st = essay.ladder[p];
+  const k = ladder.u, u = units[k], st = essay.steps[k];
   paintHeads();
   setPractising(true);
+  forceHints = st === 1;
+  setView('essay');
+  setScope(u.p, u.lo, u.hi);
+  window.scrollTo(0, 0);
   if (st >= MASTERED) {
-    if (!ladder.picked) return nextParagraph();
+    if (!ladder.picked) return nextUnit();
     // a mastered paragraph picked by hand: show it and offer the climb again
-    forceHints = false;
-    setView('essay');
-    setScope(p);
     setRange(false);
-    fillBar(banner, { title: paraName(p) + ' · mastered', text: 'Climb it again to keep it fresh, or move on.' }, [
-      ['Climb again', () => { essay.ladder[p] = 0; presentStep(); }, 'primary'],
-      ['Next paragraph', nextParagraph],
+    fillBar(banner, { title: unitName(u) + ' · mastered', text: 'Climb it again to keep it fresh, or move on.' }, [
+      ['Climb again', () => { setStep(k, firstStep(u)); presentStep(); }, 'primary'],
+      ['Next', nextUnit],
       ['Exit', exitPractise, 'link']
     ]);
     return;
   }
-  forceHints = st === 1;
-  setView('essay');
-  setScope(p);
-  window.scrollTo(0, 0);
-  const { lo, hi } = scope;
   if (st === 4) {
-    fillBar(banner, ladderMsg(st, `Write it out from memory. ${PASS}% or better masters the paragraph.`), ladderNav());
-    openBlank('p' + p);
+    fillBar(banner, ladderMsg(st, `Write it out from memory. ${PASS}% or better and it's done.`), ladderNav());
+    openBlank(blankId(k));
     return;
   }
   beginAction();
-  for (let i = lo; i <= hi; i++) setCovered(i, st === 1);
+  for (let i = u.lo; i <= u.hi; i++) setCovered(i, st === 1);
   if (st >= 2) {
-    const ids = keyed(lo, hi);
+    const ids = keyed(u.lo, u.hi);
     pickWeighted(ids, Math.round(ids.length * (st === 2 ? 1 / 3 : 2 / 3))).forEach(i => setCovered(i, true));
   }
-  endAction(lo - 1);
+  endAction(u.lo - 1);
   stepping = st > 0;
   const got = [['Got it', () => moveStep(1), 'primary'], ['Shaky', () => moveStep(-1)]];
+  const fill = u.whole ? 'Now the parts together. Recite the whole paragraph, filling the gaps.' : 'Recite it all, filling the gaps. Tap a gap to check it.';
   if (st === 0) fillBar(banner, ladderMsg(st, 'Read it aloud twice, slowly.'), [['Next step', () => moveStep(1), 'primary'], ...ladderNav()]);
   else if (st === 1) fillBar(banner, ladderMsg(st, 'Recite it from the first letters. Tap a word to check it and long-press or right-click any you got wrong.'), [...got, ...ladderNav()]);
-  else fillBar(banner, ladderMsg(st, 'Recite the whole paragraph, filling the gaps. Tap a gap to check it.'), [...got, ...ladderNav()]);
+  else fillBar(banner, ladderMsg(st, fill), [...got, ...ladderNav()]);
 }
 
 function ladderResult(r, said) {
-  const p = ladder.p, pass = r.pct >= PASS;
-  essay.ladder[p] = pass ? MASTERED : 3;
+  const k = ladder.u, u = units[k], pass = r.pct >= PASS;
+  setStep(k, pass ? MASTERED : 3);
   paintHeads();
   forceHints = false;
-  setScope(p);
-  fillBar(banner, { title: paraName(p) + (pass ? ' · mastered' : ' · not there yet'), text: said + (pass ? '' : ' The words you dropped are in red. Read them over, then climb back up.') }, [
-    pass ? ['Next paragraph', nextParagraph, 'primary'] : ['Go again', presentStep, 'primary'],
+  setScope(u.p, u.lo, u.hi);
+  fillBar(banner, { title: unitName(u) + (pass ? ' · done' : ' · not there yet'), text: said + (pass ? '' : ' The words you dropped are in red. Read them over, then climb back up.') }, [
+    pass ? ['Next', nextUnit, 'primary'] : ['Go again', presentStep, 'primary'],
     ['Exit', exitPractise, 'link']
   ], r.attempt);
 }
 
-function nextParagraph() {
-  const lad = essay.ladder, n = lad.length;
+function nextUnit() {
+  const n = units.length;
   ladder.picked = false;
-  for (let k = 1; k <= n; k++) {
-    const q = (ladder.p + k) % n;
-    if (lad[q] < MASTERED) { ladder.p = q; return presentStep(); }
+  for (let j = 1; j <= n; j++) {
+    const q = (ladder.u + j) % n;
+    if (essay.steps[q] < MASTERED) { ladder.u = q; return presentStep(); }
   }
   ladderDone();
 }
 
 function ladderDone() {
   setPractising(true);
+  paintHeads();
   forceHints = false;
   setView('essay');
   setScope(null);
   fillBar(banner, 'Every paragraph is mastered. The last test is the whole essay on a blank page.', [
     ['Blank page', () => { exitPractise(); openBlank('all'); }, 'primary'],
-    ['Start the ladder again', () => { essay.ladder.fill(0); saveStore(); startPractise(); }],
+    ['Start the ladder again', () => { essay.steps = units.map(firstStep); syncLadder(); saveStore(); startPractise(); }],
     ['Exit', exitPractise, 'link']
   ]);
 }
@@ -2661,7 +2769,7 @@ modes.addEventListener('click', (e) => {
   modes.open = false;
   if (view !== 'essay' && b.dataset.mode !== 'adapt' && b.dataset.mode !== 'blank') setView('essay');
   ({
-    blank: () => openBlank(scope ? 'p' + scope.p : 'all'),
+    blank: () => openBlank(ladder ? blankId(ladder.u) : scope ? 'p' + scope.p : 'all'),
     recite: startRecite,
     listen: startListen,
     skeleton,
