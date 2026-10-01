@@ -392,8 +392,8 @@
       <div class="naming">
         Name body paragraphs
         <select id="naming">
+          <option value="text">by text</option>
           <option value="single">Body 1, Body 2, ...</option>
-          <option value="pair">by two texts in turn</option>
         </select>
         <span id="pairNames" hidden>
           <input type="text" id="textA" placeholder="First text">
@@ -800,13 +800,69 @@ function detectSections(text) {
   return a.length < 3 && b.length > a.length ? b : a;
 }
 
-// pair: [first text, second text] when the body paragraphs alternate between two texts
-function defaultTitles(n, pair) {
+// A name as it's counted: no punctuation around it, no possessive
+const nameOf = tok => tok.replace(/^[^\p{L}]+/u, '').replace(/[^\p{L}]+$/u, '').replace(/[’']s$/, '');
+
+// A comparative essay moves between two texts. Work out which body paragraph is about which
+// from the names it uses most (a name in the topic sentence counts for more).
+// Returns { names: [a, b], sides: 0 or 1 per body paragraph }, or null when no two names split the bodies.
+function detectTexts(secs) {
+  const n = secs.length;
+  if (n < 4) return null;
+  // names: capitalised words that turn up mid-sentence somewhere, so "Thus" and "Through" don't count
+  const proper = new Set();
+  secs.forEach(s => {
+    let start = true;
+    s.text.split(/\s+/).forEach(tok => {
+      const w = nameOf(tok);
+      if (!start && w.length >= 4 && /^\p{Lu}\p{Ll}/u.test(w) && !STOP.has(w.toLowerCase())) proper.add(w);
+      start = ENDS.test(tok);
+    });
+  });
+  const count = (text, w) => text.split(/\s+/).filter(tok => nameOf(tok) === w).length;
+  const firstSentence = text => { const m = text.match(/^.*?[.!?…][)"'”’\]]*(?=\s+\p{Lu}|$)/u); return m ? m[0] : text; };
+  const bodies = secs.slice(1, n - 1);
+  const cands = [...proper].map(w => {
+    const per = bodies.map(s => count(s.text, w) + 3 * Math.min(1, count(firstSentence(s.text), w)));
+    // the texts being compared are named in the introduction and the conclusion too
+    const frame = 1 + 0.5 * Math.min(1, count(secs[0].text, w)) + 0.5 * Math.min(1, count(secs[n - 1].text, w));
+    return { w, per, frame, total: per.reduce((a, b) => a + b, 0) };
+  }).filter(c => c.per.filter(Boolean).length >= 2).sort((a, b) => b.total - a.total).slice(0, 14);
+  let best = null;
+  cands.forEach((A, x) => cands.slice(x + 1).forEach(B => {
+    const sides = bodies.map((_, i) => A.per[i] > B.per[i] ? 0 : B.per[i] > A.per[i] ? 1 : -1);
+    const wins = [0, 1].map(k => sides.filter(v => v === k).length);
+    if (!wins[0] || !wins[1] || wins[0] + wins[1] < 0.75 * bodies.length) return;
+    const score = bodies.reduce((sum, _, i) => sum + Math.abs(A.per[i] - B.per[i]), 0) * A.frame * B.frame * Math.min(...wins) / Math.max(...wins);
+    if (!best || score > best.score) best = { score, pair: [A.w, B.w], sides };
+  }));
+  if (!best) return null;
+  // a paragraph neither name claims is taken to be the other text from the one before it
+  best.sides.forEach((v, i) => { if (v < 0) best.sides[i] = i ? 1 - best.sides[i - 1] : 1 - best.sides.find(k => k >= 0); });
+  // whichever text comes up first is the first text
+  if (best.sides[0] === 1) { best.pair.reverse(); best.sides = best.sides.map(v => 1 - v); }
+  const all = secs.map(s => s.text).join(' ');
+  return { names: best.pair.map(w => workOf(w, all) || w), sides: best.sides };
+}
+
+// "Shakespeare's The Tempest (1611)" -> "Tempest": the work makes a better heading than its author
+function workOf(author, text) {
+  const title = String.raw`((?:\p{Lu}[\p{L}’'-]*\s+){0,3}\p{Lu}[\p{L}’'-]*)`;
+  const m = text.match(new RegExp(author + String.raw`[’']s?\s+["“‘']?` + title + String.raw`["”’']?,?\s*\((?:c\.\s*)?\d{4}\)`, 'u'))
+    || text.match(new RegExp(author + String.raw`[’']s?\s+["“‘']?((?:The|A|An)\s+` + title + ')', 'u'));
+  return m ? m[1].replace(/^(The|A|An)\s+/, '') : '';
+}
+
+// pair: [first text, second text]; sides: which of the two each body paragraph is about (in turn if not given)
+function defaultTitles(n, pair, sides) {
+  const seen = [0, 0];
   return Array.from({ length: n }, (_, i) => {
     if (n >= 2 && i === 0) return 'Introduction';
     if (n >= 3 && i === n - 1) return 'Conclusion';
     const j = n >= 2 ? i - 1 : i;
-    return pair ? pair[j % 2] + ' BP' + (Math.floor(j / 2) + 1) : 'Body ' + (j + 1);
+    if (!pair) return 'Body ' + (j + 1);
+    const k = sides ? sides[j] : j % 2;
+    return pair[k] + ' BP' + ++seen[k];
   });
 }
 
@@ -891,15 +947,21 @@ function renderSaved() {
 let secEdits = {};
 let secCount = 0;
 
-function pairOf() {
-  return naming.value === 'pair' ? [textA.value.trim() || 'Text 1', textB.value.trim() || 'Text 2'] : null;
-}
+let namesTouched = false;  // the two text names were typed by hand, so detection leaves them alone
 
 function currentSections() {
   if (!detect.checked) return null;
   const secs = detectSections(essayInput.value);
   if (secs.length !== secCount) { secEdits = {}; secCount = secs.length; }
-  const names = defaultTitles(secs.length, pairOf());
+  let sides = null;
+  if (naming.value === 'text') {
+    const found = detectTexts(secs);
+    if (found && !namesTouched) [textA.value, textB.value] = found.names;
+    const a = textA.value.trim(), b = textB.value.trim();
+    if (a && b) secs.pair = [a, b];
+    sides = found && found.sides;
+  }
+  const names = defaultTitles(secs.length, secs.pair, sides);
   secs.forEach((s, i) => { s.title = secEdits[i] ?? s.title ?? names[i]; });
   return secs;
 }
@@ -907,7 +969,7 @@ function currentSections() {
 function renderSecs() {
   const secs = currentSections();
   secsBox.hidden = !secs || !secs.length;
-  pairNames.hidden = naming.value !== 'pair';
+  pairNames.hidden = naming.value !== 'text';
   secList.textContent = '';
   if (!secs) return;
   secs.forEach((s, i) => {
@@ -925,13 +987,15 @@ essayInput.addEventListener('input', () => {
 });
 detect.addEventListener('change', renderSecs);
 // a new naming pattern replaces hand-typed headings
-[naming, textA, textB].forEach(c => c.addEventListener(c === naming ? 'change' : 'input', () => { secEdits = {}; renderSecs(); }));
+naming.addEventListener('change', () => { secEdits = {}; renderSecs(); });
+[textA, textB].forEach(c => c.addEventListener('input', () => { namesTouched = true; secEdits = {}; renderSecs(); }));
 
 function openEditor(rec) {
   editingId = rec ? rec.id : null;
   essayInput.value = rec ? rec.text : '';
   detect.checked = rec ? !!rec.titles : true;
-  naming.value = rec && rec.pair ? 'pair' : 'single';
+  naming.value = rec && rec.titles && !rec.pair ? 'single' : 'text';
+  namesTouched = !!(rec && rec.pair);
   textA.value = rec && rec.pair ? rec.pair[0] : '';
   textB.value = rec && rec.pair ? rec.pair[1] : '';
   secEdits = {};
@@ -993,7 +1057,7 @@ startBtn.addEventListener('click', () => {
     rec.text = text;
   }
   rec.titles = secs ? secs.map((s, i) => s.title.trim() || 'Paragraph ' + (i + 1)) : undefined;
-  rec.pair = secs && pairOf() || undefined;
+  rec.pair = secs && secs.pair || undefined;
   closeEditor();
   openEssay(rec, true);
 });
@@ -1939,10 +2003,11 @@ function blankTargets() {
   const t = [{ id: 'all', label: 'the whole essay', lo: 0, hi: words.length - 1 }];
   if (paras.length < 2) return t;
   paras.forEach((pp, p) => t.push({ id: 'p' + p, label: paraName(p), lo: pp.lo, hi: pp.hi }));
-  if (essay.pair && paras.length >= 4) {
-    for (let j = 1; j + 1 <= paras.length - 2; j += 2) {
-      t.push({ id: 'g' + j, label: 'BP' + (j + 1) / 2 + ', both texts together', lo: paras[j].lo, hi: paras[j + 1].hi });
-    }
+  // "Tempest BP1" then "Hag-Seed BP1" are one paragraph in the exam
+  const bp = p => paraName(p).match(/^(.+) BP(\d+)$/) || [];
+  for (let p = 0; p + 1 < paras.length; p++) {
+    const [, a, n] = bp(p), [, b, m] = bp(p + 1);
+    if (n && n === m && a !== b) t.push({ id: 'g' + p, label: 'BP' + n + ', both texts together', lo: paras[p].lo, hi: paras[p + 1].hi });
   }
   return t;
 }
