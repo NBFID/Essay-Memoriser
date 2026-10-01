@@ -31,7 +31,8 @@ const EXTRA = [
   'power control authority dominance',
   'change transform alter shift',
   'human humanity mankind humankind people',
-  'use utilise utilize employ'
+  'use utilise utilize employ',
+  'allow enable permit let empower facilitate'
 ];
 
 const groups = new Map();  // part of speech + offset -> Set of words

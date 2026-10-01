@@ -2802,6 +2802,7 @@ allow countenance furlough let permit
 allow countenance let permit
 allow countenance let permit tolerate
 allow countenance let permit trust
+allow enable permit let empower facilitate
 allow give grant
 allow grant
 allow grant vouchsafe
