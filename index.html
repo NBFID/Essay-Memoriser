@@ -15,15 +15,17 @@
     background: #fff;
     margin: 20px;
   }
-  h2 { font-weight: normal; }
-  #essayTitle { color: #777; }
+  h2 { font-weight: normal; margin: 0 0 14px; }
+  #essayTitle { color: #888; }
   textarea {
     width: 100%;
-    height: 150px;
+    height: 200px;
     font-family: Arial, sans-serif;
     font-size: 12pt;
     line-height: 1.5;
-    padding: 8px;
+    padding: 10px;
+    border: 1px solid #bbb;
+    border-radius: 8px;
   }
   button { font-family: Arial, sans-serif; }
   .link {
@@ -34,27 +36,52 @@
   .link:focus-visible { outline: 2px solid #000; }
   .muted { color: #666; font-size: 10pt; }
 
+  /* one button style for the whole app */
+  .btn, #controls button, #options summary {
+    font-size: 10.5pt;
+    line-height: 1.3;
+    padding: 5px 11px;
+    border: 1px solid #c4c4c4;
+    border-radius: 7px;
+    background: #fff;
+    color: #000;
+    cursor: pointer;
+  }
+  .btn:hover, #controls button:hover:not(:disabled), #options summary:hover { background: #f0f0f0; }
+  .btn.primary { background: #000; border-color: #000; color: #fff; }
+  .btn.primary:hover { background: #333; }
+  #controls button:disabled { opacity: 0.35; cursor: default; }
+
   /* ---- essays screen ---- */
   #saved .row {
     display: flex;
-    align-items: baseline;
-    gap: 10px;
-    padding: 3px 0;
-    border-bottom: 1px solid #eee;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 12px;
+    margin-bottom: 6px;
+    border: 1px solid #e2e2e2;
+    border-radius: 9px;
   }
+  #saved .row:hover { background: #fafafa; border-color: #ccc; }
   #saved .open {
+    text-decoration: none;
+    font-weight: bold;
+    white-space: nowrap;
+  }
+  #saved .open:hover { text-decoration: underline; }
+  #saved .meta {
+    flex: 1;
+    min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    min-width: 0;
-    flex: 0 1 auto;
   }
-  #saved .meta { white-space: nowrap; flex: 1 0 auto; }
   #saved .actions { white-space: nowrap; }
-  #saved .actions .link { margin-left: 8px; }
-  #newBtn { display: inline-block; margin: 10px 0 20px; }
-  #editor { margin-bottom: 20px; }
-  #editor button { margin-top: 6px; margin-right: 6px; }
+  #saved .actions .link { margin-left: 10px; }
+  #newBtn { margin: 6px 0 22px; }
+  #editor { margin-bottom: 22px; }
+  #editor .btn { margin-top: 8px; margin-right: 6px; }
+  #backup { display: flex; gap: 18px; }
 
   /* ---- toolbar ---- */
   #controls {
@@ -65,9 +92,9 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px 8px;
-    margin: 10px 0;
-    padding: 8px 0;
+    gap: 8px 12px;
+    margin: 0 0 10px;
+    padding: 10px 0;
     border-top: 1px solid #000;
     border-bottom: 1px solid #000;
   }
@@ -75,60 +102,55 @@
   @media (max-width: 700px) {
     #controls { position: static; }
   }
-  #controls button, #options summary {
-    font-size: 11pt;
-    line-height: 1.3;
-    padding: 3px 9px;
-    border: 1px solid #999;
-    border-radius: 4px;
-    background: #f4f4f4;
-    color: #000;
-    cursor: pointer;
-  }
-  #controls button:hover:not(:disabled), #options summary:hover { background: #e6e6e6; }
-  #controls button:disabled { opacity: 0.4; cursor: default; }
-  .sep {
-    width: 1px;
-    height: 22px;
-    background: #bbb;
-    margin: 0 2px;
-  }
+  /* buttons that belong together sit joined in one pill */
+  .group { display: inline-flex; }
+  #controls .group > button { border-radius: 0; margin-left: -1px; }
+  #controls .group > button:first-child { border-radius: 7px 0 0 7px; margin-left: 0; }
+  #controls .group > button:last-child { border-radius: 0 7px 7px 0; }
+
+  /* the tool tray: the cover pen, six highlighters, Missed and the eraser */
   #pens {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
+    padding: 3px 5px;
+    border: 1px solid #c4c4c4;
+    border-radius: 999px;
+    background: #f5f5f5;
   }
-  #controls .swatch {
-    width: 24px;
-    height: 24px;
+  #controls #pens .swatch {
+    width: 22px;
+    height: 22px;
     padding: 0;
-    border: 2px solid #000;
-    border-radius: 3px;
+    border: 1px solid rgba(0,0,0,0.3);
+    border-radius: 50%;
   }
-  #controls #missPen {
-    text-decoration: underline wavy #d00;
-    text-decoration-skip-ink: none;
+  #controls #pens .swatch[data-pen="cover"] { margin-right: 5px; }
+  #controls #pens .tool {
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    padding: 3px 10px;
   }
-  #controls [data-pen].selected {
-    outline: 2px solid #000;
-    outline-offset: 2px;
-  }
+  #controls #pens .tool:hover:not(.selected) { background: #e4e4e4; }
+  #controls #pens .swatch.selected { box-shadow: 0 0 0 2px #f5f5f5, 0 0 0 4px #000; }
+  #controls #pens .tool.selected { background: #000; color: #fff; }
+  .cross { color: #d32f2f; font-weight: bold; }
+  .tool.selected .cross { color: #ff6b6b; }
+
   #right {
     margin-left: auto;
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    font-size: 11pt;
   }
-  #status { color: #555; }
-  #controls #timer {
-    font-variant-numeric: tabular-nums;
-    background: #fff;
-  }
-  #controls #timer.up { color: #d00; border-color: #d00; }
+  #status { color: #666; font-size: 10pt; }
+  #controls #timer { font-variant-numeric: tabular-nums; }
+  #controls #timer.up { color: #d32f2f; border-color: #d32f2f; }
   #options { position: relative; }
-  #options summary { list-style: none; user-select: none; }
+  #options summary { display: block; list-style: none; user-select: none; }
   #options summary::-webkit-details-marker { display: none; }
+  #options[open] summary { background: #f0f0f0; }
   #options .panel {
     position: absolute;
     right: 0;
@@ -136,19 +158,23 @@
     z-index: 3;
     width: max-content;
     max-width: min(420px, calc(100vw - 40px));
+    max-height: calc(100vh - 140px);
+    overflow: auto;
     background: #fff;
-    border: 1px solid #000;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.15);
-    padding: 10px 14px;
+    border: 1px solid #c4c4c4;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.14);
+    padding: 12px 16px;
     display: grid;
-    gap: 6px;
-    font-size: 11pt;
+    gap: 7px;
+    font-size: 10.5pt;
   }
-  #options .panel hr { width: 100%; border: 0; border-top: 1px solid #ddd; margin: 2px 0; }
+  #options .panel hr { width: 100%; border: 0; border-top: 1px solid #e2e2e2; margin: 3px 0; }
   #options input[type=number] { width: 4em; }
+  #controls #options .panel button { padding: 2px 10px; }
   #help {
     font-size: 10pt;
-    color: #555;
+    color: #666;
     margin: 0 0 10px;
   }
 
@@ -174,11 +200,8 @@
     left: 10px;
     pointer-events: none;
   }
-  /* a word you got wrong; stays marked until you clear it (or type it right) */
-  .word.missed {
-    text-decoration: underline wavy #d00;
-    text-decoration-skip-ink: none;
-  }
+  /* a word you got wrong; stays red until you clear it (or type it right) */
+  .word.missed { color: #d32f2f; }
   @keyframes flash-ok { from { background-color: rgba(0,190,0,0.4); } }
   @keyframes flash-miss { from { background-color: rgba(255,0,0,0.5); } }
   .flash-ok { animation: flash-ok 0.6s ease-out; }
@@ -191,15 +214,15 @@
 
 <div id="setup">
   <div id="saved"></div>
-  <button id="newBtn" class="link">+ New essay</button>
+  <button id="newBtn" class="btn">+ New essay</button>
   <div id="editor" hidden>
     <textarea id="essayInput" placeholder="Paste your essay here..."></textarea>
     <br>
-    <button id="startBtn">Cover Essay</button>
-    <button id="cancelBtn">Cancel</button>
+    <button id="startBtn" class="btn primary">Cover Essay</button>
+    <button id="cancelBtn" class="btn">Cancel</button>
   </div>
-  <div class="muted">
-    <button id="exportBtn" class="link">Back up essays to a file</button> ·
+  <div id="backup" class="muted">
+    <button id="exportBtn" class="link">Back up essays to a file</button>
     <button id="importBtn" class="link">Restore from a backup</button>
     <input type="file" id="importFile" accept=".json,application/json" hidden>
   </div>
@@ -208,24 +231,25 @@
 <div id="work" hidden>
   <div id="controls">
     <button id="essaysBtn" title="Back to your essays">‹ Essays</button>
-    <span class="sep"></span>
     <span id="pens">
       <button type="button" class="swatch selected" data-pen="cover" title="Reveal / hide" style="background:#000"></button>
-      <button type="button" id="missPen" data-pen="miss" title="Mark words you got wrong (or right-click a word)">Missed</button>
-      <button type="button" id="eraserPen" data-pen="erase" title="Clear highlights">Eraser</button>
+      <button type="button" class="tool" id="missPen" data-pen="miss" title="Mark words you got wrong (or right-click a word)"><span class="cross">✗</span> Missed</button>
+      <button type="button" class="tool" id="eraserPen" data-pen="erase" title="Clear highlights">Eraser</button>
     </span>
-    <span class="sep"></span>
-    <button id="showAllBtn">Show All</button>
-    <button id="eraseBtn" title="Hide more of the essay at random, starting with words you've missed">Erase 20%</button>
-    <button id="coverAllBtn">Cover All</button>
-    <span class="sep"></span>
-    <button id="undoBtn" disabled>Undo</button>
-    <button id="redoBtn" disabled>Redo</button>
+    <span class="group">
+      <button id="showAllBtn">Show All</button>
+      <button id="eraseBtn" title="Hide more of the essay at random, starting with words you've missed">Erase 20%</button>
+      <button id="coverAllBtn">Cover All</button>
+    </span>
+    <span class="group">
+      <button id="undoBtn" disabled title="Undo (Ctrl+Z)">↶ Undo</button>
+      <button id="redoBtn" disabled title="Redo (Ctrl+Y)">Redo ↷</button>
+    </span>
     <span id="right">
       <span id="status" hidden></span>
       <button id="timer" hidden title="Stop the timer"></button>
       <details id="options">
-        <summary>Options</summary>
+        <summary>Options ▾</summary>
         <div class="panel">
           <label><input type="checkbox" data-opt="hints"> First letters on hidden words</label>
           <label><input type="checkbox" data-opt="typing"> Type to check: type the next word, then Space</label>
@@ -246,7 +270,7 @@
     </span>
   </div>
   <div id="help">
-    Click a word to reveal or hide it · drag to sweep · double-click for its sentence · right-click or long-press marks it missed ·
+    Click a word to reveal or hide it · drag across text to do a whole stretch · double-click for its sentence · right-click or long-press marks it missed ·
     Space next word · Enter next sentence · ←&nbsp;step back<span id="typingHelp"> · type the next word then Space to check it</span>
     · <button id="hideHelp" class="link">hide</button>
   </div>
@@ -597,6 +621,11 @@ document.addEventListener('pointerdown', (e) => {
   if (options.open && !options.contains(e.target)) options.open = false;
 });
 
+// Once the menu closes, don't leave a checkbox in it focused (Space would toggle it instead of stepping)
+options.addEventListener('toggle', () => {
+  if (!options.open && options.contains(document.activeElement)) document.activeElement.blur();
+});
+
 // Timed write: a countdown for writing the essay out by hand under exam conditions
 function updateTimer() {
   const end = store.timerEnd;
@@ -688,7 +717,7 @@ function measure() {
   lineH = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.5;
   W = origin.width;
   H = origin.height;
-  dpr = Math.min(window.devicePixelRatio || 1, 32000 / Math.max(H, 1));
+  dpr = screenDpr();
   canvas.width = Math.ceil(W * dpr);
   canvas.height = Math.ceil(H * dpr);
   canvas.style.width = W + 'px';
@@ -713,9 +742,19 @@ function measure() {
   gaps.forEach(g => { g.boxes = boxesOf(g.el, -1); });
 }
 
+// Canvas resolution: the screen's pixel ratio, capped so a very long essay stays under the canvas size limit
+function screenDpr() {
+  return Math.min(window.devicePixelRatio || 1, 32000 / Math.max(H, 1));
+}
+
 new ResizeObserver(() => {
   if (!work.hidden && words.length) { measure(); render(); }
 }).observe(textLayer);
+
+// Dragging the window to a screen with different scaling changes the pixel ratio but not the layout
+window.addEventListener('resize', () => {
+  if (!work.hidden && words.length && screenDpr() !== dpr) { measure(); render(); }
+});
 
 function fillBox(b, w = b.w) {
   const x0 = Math.floor(b.x * dpr), x1 = Math.ceil((b.x + w) * dpr);
@@ -952,7 +991,7 @@ PALETTE.forEach((c, i) => {
   b.className = 'swatch';
   b.dataset.pen = i;
   b.title = COLOUR_NAMES[i] + ' highlighter';
-  b.style.background = c;
+  b.style.background = `linear-gradient(${c}, ${c}), #fff`;  // the colour as it looks on the page
   pens.insertBefore(b, missPen);
 });
 
@@ -969,12 +1008,39 @@ function selectPen(p) {
 
 /* ---------- pointer: tap, double-tap, sweep, mark missed ---------- */
 
-function wordAt(x, y, origin = textLayer.getBoundingClientRect()) {
-  const row = rows[Math.floor((y - origin.top) / lineH)];
-  if (!row) return -1;
-  const rx = x - origin.left;
-  const hit = row.find(b => rx >= b.x0 && rx < b.x1);
-  return hit ? hit.i : -1;
+// The word on text line r closest to x, and how far away it is (0 = right on it)
+function nearestInRow(r, rx) {
+  let i = -1, dist = Infinity;
+  for (const b of rows[r] || []) {
+    if (b.i < 0) continue;
+    const d = rx < b.x0 ? b.x0 - rx : rx > b.x1 ? rx - b.x1 : 0;
+    if (d < dist) { dist = d; i = b.i; }
+  }
+  return { i, dist };
+}
+
+// The word under a tap; a tap in the space between two words takes the nearer one
+function wordAt(x, y) {
+  const origin = textLayer.getBoundingClientRect();
+  const hit = nearestInRow(Math.floor((y - origin.top) / lineH), x - origin.left);
+  return hit.dist <= 4 ? hit.i : -1;
+}
+
+// Where a drag is pointing, in reading order. Past the end of a line means its
+// last word, a blank line between paragraphs means the end of the paragraph above,
+// and above or below the essay means its first or last word.
+function wordNear(x, y) {
+  const origin = textLayer.getBoundingClientRect();
+  const r = Math.floor((y - origin.top) / lineH);
+  if (r < 0) return 0;
+  if (r >= rows.length) return words.length - 1;
+  const hit = nearestInRow(r, x - origin.left);
+  if (hit.i >= 0) return hit.i;
+  for (let up = r - 1; up >= 0; up--) {
+    const ids = (rows[up] || []).filter(b => b.i >= 0).map(b => b.i);
+    if (ids.length) return Math.max(...ids);
+  }
+  return 0;
 }
 
 function tap(x, y) {
@@ -1005,32 +1071,50 @@ function toggleMissedAt(x, y) {
   endAction();
 }
 
-// Sample the pointer's path every few px so fast sweeps don't skip words.
-// The first word touched decides the direction (reveal vs hide, colour vs clear).
+// A drag works like selecting text: every word in reading order from the one you
+// started on to the one you're pointing at gets the same toggle as the first word
+// (reveal or hide, colour or clear). Dragging back shrinks the range again.
 function sweepTo(g, x, y) {
-  const origin = textLayer.getBoundingClientRect();
-  const steps = Math.max(1, Math.ceil(Math.hypot(x - g.x, y - g.y) / 4));
-  for (let k = g.started ? 1 : 0; k <= steps; k++) {
-    const i = wordAt(g.x + (x - g.x) * k / steps, g.y + (y - g.y) * k / steps, origin);
-    if (i < 0) continue;
-    if (g.target === undefined) g.target = penTarget(i);
-    penApply(i, g.target);
+  if (g.start === undefined) {
+    g.start = g.lo = g.hi = wordNear(g.x, g.y);
+    g.target = penTarget(g.start);
   }
-  g.started = true;
-  g.x = x;
-  g.y = y;
+  const i = wordNear(x, y);
+  const lo = Math.min(g.start, i), hi = Math.max(g.start, i);
+  if (g.applied && lo === g.lo && hi === g.hi) return;
+  // put the last range back as it was before the drag, then apply the new one
+  const before = undoStack[undoStack.length - 1];
+  for (let j = g.lo; j <= g.hi; j++) {
+    covered[j] = before.covered[j];
+    hl[j] = before.hl[j];
+    missed[j] = before.missed[j];
+  }
+  Object.assign(act, { changed: false, maxRevealed: -1, minCovered: Infinity });
+  for (let j = lo; j <= hi; j++) penApply(j, g.target);
+  g.lo = lo;
+  g.hi = hi;
+  g.applied = true;
+}
+
+// Finish a press: keep or drop what a sweep painted
+function endGesture(g, keep) {
+  clearTimeout(g.hold);
+  if (gesture === g) gesture = null;
+  if (g.sweeping) keep ? endAction() : cancelAction();
 }
 
 stage.addEventListener('pointerdown', (e) => {
-  if (gesture) return;
-  typed = '';
+  // A press that never got its pointerup (released outside the window) mustn't lock the essay
+  if (gesture) endGesture(gesture, true);
+  if (typed) { typed = ''; draw(); }
   if (e.button === 2) {
     toggleMissedAt(e.clientX, e.clientY);
     return;
   }
   if (e.button !== 0) return;
-  const g = gesture = { id: e.pointerId, x: e.clientX, y: e.clientY, sweeping: false, started: false, target: undefined };
-  if (e.pointerType !== 'mouse') g.hold = setTimeout(() => {
+  const g = gesture = { id: e.pointerId, x: e.clientX, y: e.clientY, sweeping: false };
+  // Long-press is for fingers only; a pen resting on a word shouldn't mark it (pens have the barrel button)
+  if (e.pointerType === 'touch') g.hold = setTimeout(() => {
     if (gesture !== g || g.sweeping) return;
     gesture = null;
     toggleMissedAt(g.x, g.y);
@@ -1056,19 +1140,18 @@ stage.addEventListener('pointermove', (e) => {
 stage.addEventListener('pointerup', (e) => {
   const g = gesture;
   if (!g || e.pointerId !== g.id) return;
-  clearTimeout(g.hold);
-  gesture = null;
-  if (g.sweeping) endAction();
-  else tap(g.x, g.y);
+  const wasTap = !g.sweeping;
+  endGesture(g, true);
+  if (wasTap) tap(g.x, g.y);
 });
 
 // The browser took the gesture over (a finger scroll): drop whatever it painted
 stage.addEventListener('pointercancel', (e) => {
-  const g = gesture;
-  if (!g || e.pointerId !== g.id) return;
-  clearTimeout(g.hold);
-  gesture = null;
-  if (g.sweeping) cancelAction();
+  if (gesture && e.pointerId === gesture.id) endGesture(gesture, false);
+});
+
+stage.addEventListener('lostpointercapture', (e) => {
+  if (gesture && e.pointerId === gesture.id) endGesture(gesture, true);
 });
 
 stage.addEventListener('pointerleave', (e) => {
