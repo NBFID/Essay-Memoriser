@@ -2,9 +2,11 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Essay Eraser</title>
 <style>
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body {
     font-family: Arial, sans-serif;
     font-size: 12pt;
@@ -13,6 +15,8 @@
     background: #fff;
     margin: 20px;
   }
+  h2 { font-weight: normal; }
+  #essayTitle { color: #777; }
   textarea {
     width: 100%;
     height: 150px;
@@ -21,456 +25,1192 @@
     line-height: 1.5;
     padding: 8px;
   }
+  button { font-family: Arial, sans-serif; }
+  .link {
+    all: unset;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  .link:focus-visible { outline: 2px solid #000; }
+  .muted { color: #666; font-size: 10pt; }
+
+  /* ---- essays screen ---- */
+  #saved .row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 3px 0;
+    border-bottom: 1px solid #eee;
+  }
+  #saved .open {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+  #saved .meta { white-space: nowrap; flex: 1 0 auto; }
+  #saved .actions { white-space: nowrap; }
+  #saved .actions .link { margin-left: 8px; }
+  #newBtn { display: inline-block; margin: 10px 0 20px; }
+  #editor { margin-bottom: 20px; }
+  #editor button { margin-top: 6px; margin-right: 6px; }
+
+  /* ---- toolbar ---- */
   #controls {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #fff;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
     margin: 10px 0;
-    padding: 10px 0;
+    padding: 8px 0;
     border-top: 1px solid #000;
     border-bottom: 1px solid #000;
   }
-  #controls > * {
-    margin-right: 10px;
-    margin-bottom: 6px;
+  /* on a phone the toolbar wraps to several rows; don't pin it over the essay */
+  @media (max-width: 700px) {
+    #controls { position: static; }
   }
+  #controls button, #options summary {
+    font-size: 11pt;
+    line-height: 1.3;
+    padding: 3px 9px;
+    border: 1px solid #999;
+    border-radius: 4px;
+    background: #f4f4f4;
+    color: #000;
+    cursor: pointer;
+  }
+  #controls button:hover:not(:disabled), #options summary:hover { background: #e6e6e6; }
+  #controls button:disabled { opacity: 0.4; cursor: default; }
+  .sep {
+    width: 1px;
+    height: 22px;
+    background: #bbb;
+    margin: 0 2px;
+  }
+  #pens {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  #controls .swatch {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 2px solid #000;
+    border-radius: 3px;
+  }
+  #controls #missPen {
+    text-decoration: underline wavy #d00;
+    text-decoration-skip-ink: none;
+  }
+  #controls [data-pen].selected {
+    outline: 2px solid #000;
+    outline-offset: 2px;
+  }
+  #right {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11pt;
+  }
+  #status { color: #555; }
+  #controls #timer {
+    font-variant-numeric: tabular-nums;
+    background: #fff;
+  }
+  #controls #timer.up { color: #d00; border-color: #d00; }
+  #options { position: relative; }
+  #options summary { list-style: none; user-select: none; }
+  #options summary::-webkit-details-marker { display: none; }
+  #options .panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: 3;
+    width: max-content;
+    max-width: min(420px, calc(100vw - 40px));
+    background: #fff;
+    border: 1px solid #000;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+    padding: 10px 14px;
+    display: grid;
+    gap: 6px;
+    font-size: 11pt;
+  }
+  #options .panel hr { width: 100%; border: 0; border-top: 1px solid #ddd; margin: 2px 0; }
+  #options input[type=number] { width: 4em; }
+  #help {
+    font-size: 10pt;
+    color: #555;
+    margin: 0 0 10px;
+  }
+
+  /* ---- essay ---- */
   #stage {
     position: relative;
     border: 1px solid #000;
     padding: 10px;
-    display: none;
+    cursor: crosshair;
     user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    /* vertical finger drags scroll the page; taps and sideways drags paint */
+    touch-action: pan-y pinch-zoom;
   }
   #textLayer {
     white-space: pre-wrap;
-    word-wrap: break-word;
-    position: relative;
+    overflow-wrap: break-word;
   }
-  #coverCanvas {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    cursor: crosshair;
-  }
-  #lineCanvas {
+  #cover {
     position: absolute;
     top: 10px;
     left: 10px;
     pointer-events: none;
   }
-  .word, .gap {
-    display: inline;
+  /* a word you got wrong; stays marked until you clear it (or type it right) */
+  .word.missed {
+    text-decoration: underline wavy #d00;
+    text-decoration-skip-ink: none;
   }
-  #resetBtn {
-    margin-left: auto;
-  }
-  label { font-size: 12pt; }
-  #highlightControls {
-    display: none;
-    align-items: center;
-  }
-  #highlightControls.active {
-    display: inline-flex;
-  }
-  .swatch {
-    width: 24px;
-    height: 24px;
-    border: 2px solid #000;
-    border-radius: 3px;
-    cursor: pointer;
-    padding: 0;
-    margin-right: 6px;
-  }
-  .swatch.selected {
-    outline: 2px solid #000;
-    outline-offset: 2px;
-  }
-  #highlightEraserBtn {
-    height: 24px;
-    margin-right: 10px;
-  }
-  #highlightEraserBtn.selected {
-    outline: 2px solid #000;
-    outline-offset: 2px;
-  }
-  #subModeControls, #wholeUnit {
-    display: none;
-  }
-  #subModeControls.active {
-    display: inline-flex;
-    align-items: center;
-  }
-  #wholeUnit.active {
-    display: inline;
-  }
+  @keyframes flash-ok { from { background-color: rgba(0,190,0,0.4); } }
+  @keyframes flash-miss { from { background-color: rgba(255,0,0,0.5); } }
+  .flash-ok { animation: flash-ok 0.6s ease-out; }
+  .flash-miss { animation: flash-miss 1s ease-out; }
 </style>
 </head>
 <body>
 
-<h2 style="font-weight:normal;">Essay Eraser</h2>
+<h2>Essay Eraser<span id="essayTitle"></span></h2>
 
-<textarea id="essayInput" placeholder="Paste your essay here..."></textarea>
-<br>
-<button id="startBtn">Cover Essay</button>
-
-<div id="controls">
-  <label><input type="radio" name="tool" value="reveal" checked> Reveal</label>
-  <label><input type="radio" name="tool" value="recover"> Recover</label>
-  <label><input type="radio" name="tool" value="highlight"> Highlighter</label>
-
-  <span id="subModeControls">
-    <label><input type="radio" name="submode" value="whole" checked> Whole</label>
-    <label><input type="radio" name="submode" value="partial"> Partial</label>
-  </span>
-
-  <select id="wholeUnit">
-    <option value="word">Word at a time</option>
-    <option value="sentence">Sentence at a time</option>
-  </select>
-
-  <span id="highlightControls">
-    <button type="button" class="swatch selected" data-color="rgba(255,0,0,0.45)" style="background:rgba(255,0,0,0.45)" title="Red"></button>
-    <button type="button" class="swatch" data-color="rgba(0,120,255,0.45)" style="background:rgba(0,120,255,0.45)" title="Blue"></button>
-    <button type="button" class="swatch" data-color="rgba(255,235,0,0.55)" style="background:rgba(255,235,0,0.55)" title="Yellow"></button>
-    <button type="button" class="swatch" data-color="rgba(0,190,0,0.45)" style="background:rgba(0,190,0,0.45)" title="Green"></button>
-    <button type="button" class="swatch" data-color="rgba(255,140,0,0.5)" style="background:rgba(255,140,0,0.5)" title="Orange"></button>
-    <button type="button" class="swatch" data-color="rgba(155,0,200,0.45)" style="background:rgba(155,0,200,0.45)" title="Purple"></button>
-    <button type="button" id="highlightEraserBtn">Highlight Eraser</button>
-  </span>
-
-  <button id="undoBtn" disabled>Undo</button>
-  <button id="redoBtn" disabled>Redo</button>
-  <button id="coverAllBtn">Cover All</button>
-  <button id="resetBtn">Reset / New Essay</button>
+<div id="setup">
+  <div id="saved"></div>
+  <button id="newBtn" class="link">+ New essay</button>
+  <div id="editor" hidden>
+    <textarea id="essayInput" placeholder="Paste your essay here..."></textarea>
+    <br>
+    <button id="startBtn">Cover Essay</button>
+    <button id="cancelBtn">Cancel</button>
+  </div>
+  <div class="muted">
+    <button id="exportBtn" class="link">Back up essays to a file</button> ·
+    <button id="importBtn" class="link">Restore from a backup</button>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+  </div>
 </div>
 
-<div id="stage">
-  <div id="textLayer"></div>
-  <canvas id="coverCanvas"></canvas>
-  <canvas id="lineCanvas"></canvas>
+<div id="work" hidden>
+  <div id="controls">
+    <button id="essaysBtn" title="Back to your essays">‹ Essays</button>
+    <span class="sep"></span>
+    <span id="pens">
+      <button type="button" class="swatch selected" data-pen="cover" title="Reveal / hide" style="background:#000"></button>
+      <button type="button" id="missPen" data-pen="miss" title="Mark words you got wrong (or right-click a word)">Missed</button>
+      <button type="button" id="eraserPen" data-pen="erase" title="Clear highlights">Eraser</button>
+    </span>
+    <span class="sep"></span>
+    <button id="showAllBtn">Show All</button>
+    <button id="eraseBtn" title="Hide more of the essay at random, starting with words you've missed">Erase 20%</button>
+    <button id="coverAllBtn">Cover All</button>
+    <span class="sep"></span>
+    <button id="undoBtn" disabled>Undo</button>
+    <button id="redoBtn" disabled>Redo</button>
+    <span id="right">
+      <span id="status" hidden></span>
+      <button id="timer" hidden title="Stop the timer"></button>
+      <details id="options">
+        <summary>Options</summary>
+        <div class="panel">
+          <label><input type="checkbox" data-opt="hints"> First letters on hidden words</label>
+          <label><input type="checkbox" data-opt="typing"> Type to check: type the next word, then Space</label>
+          <label><input type="checkbox" data-opt="count"> Show hidden and missed counts</label>
+          <label><input type="checkbox" data-opt="lines"> Ruled lines</label>
+          <label><input type="checkbox" data-opt="help"> Help line</label>
+          <hr>
+          <label>Erase <select id="eraseStep">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="25">25</option>
+            <option value="33">33</option>
+            <option value="50">50</option>
+          </select> % of the essay each time</label>
+          <div>Timed write <input type="number" id="timerMins" min="1" max="300"> min <button id="timerBtn">Start</button></div>
+        </div>
+      </details>
+    </span>
+  </div>
+  <div id="help">
+    Click a word to reveal or hide it · drag to sweep · double-click for its sentence · right-click or long-press marks it missed ·
+    Space next word · Enter next sentence · ←&nbsp;step back<span id="typingHelp"> · type the next word then Space to check it</span>
+    · <button id="hideHelp" class="link">hide</button>
+  </div>
+  <div id="stage">
+    <div id="textLayer"></div>
+    <canvas id="cover"></canvas>
+  </div>
 </div>
 
 <script>
+const PALETTE = ['rgba(255,0,0,0.45)', 'rgba(0,120,255,0.45)', 'rgba(255,235,0,0.55)', 'rgba(0,190,0,0.45)', 'rgba(255,140,0,0.5)', 'rgba(155,0,200,0.45)'];
+const COLOUR_NAMES = ['Red', 'Blue', 'Yellow', 'Green', 'Orange', 'Purple'];
+const STORE_KEY = 'essay-eraser';
+const DEFAULT_OPTS = { hints: false, typing: false, count: false, lines: true, help: true, eraseStep: 20, timerMins: 40 };
+
+const setup = document.getElementById('setup');
+const work = document.getElementById('work');
+const essayTitle = document.getElementById('essayTitle');
+const savedList = document.getElementById('saved');
+const newBtn = document.getElementById('newBtn');
+const editor = document.getElementById('editor');
 const essayInput = document.getElementById('essayInput');
 const startBtn = document.getElementById('startBtn');
-const resetBtn = document.getElementById('resetBtn');
-const stage = document.getElementById('stage');
-const textLayer = document.getElementById('textLayer');
-const coverCanvas = document.getElementById('coverCanvas');
-const ctx = coverCanvas.getContext('2d');
-const lineCanvas = document.getElementById('lineCanvas');
-const lctx = lineCanvas.getContext('2d');
-const wholeUnit = document.getElementById('wholeUnit');
+const cancelBtn = document.getElementById('cancelBtn');
+const exportBtn = document.getElementById('exportBtn');
+const importBtn = document.getElementById('importBtn');
+const importFile = document.getElementById('importFile');
+const controls = document.getElementById('controls');
+const essaysBtn = document.getElementById('essaysBtn');
+const pens = document.getElementById('pens');
+const missPen = document.getElementById('missPen');
+const showAllBtn = document.getElementById('showAllBtn');
+const eraseBtn = document.getElementById('eraseBtn');
+const coverAllBtn = document.getElementById('coverAllBtn');
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
-const coverAllBtn = document.getElementById('coverAllBtn');
-const subModeControls = document.getElementById('subModeControls');
-const highlightControls = document.getElementById('highlightControls');
-const highlightEraserBtn = document.getElementById('highlightEraserBtn');
-const swatches = Array.from(document.querySelectorAll('.swatch'));
+const statusEl = document.getElementById('status');
+const timerEl = document.getElementById('timer');
+const options = document.getElementById('options');
+const eraseStep = document.getElementById('eraseStep');
+const timerMins = document.getElementById('timerMins');
+const timerBtn = document.getElementById('timerBtn');
+const help = document.getElementById('help');
+const typingHelp = document.getElementById('typingHelp');
+const hideHelp = document.getElementById('hideHelp');
+const stage = document.getElementById('stage');
+const textLayer = document.getElementById('textLayer');
+const canvas = document.getElementById('cover');
+const ctx = canvas.getContext('2d');
 
-let tool = 'reveal';       // 'reveal' | 'recover' | 'highlight'
-let subMode = 'whole';     // 'whole' | 'partial' (reveal/recover only)
-let drawing = false;
+// Saved in localStorage: { essays: [{ id, title, text, covered, hl, missed, cursor, updated }], openId, opts, timerEnd }
+let store = loadStore();
+const opts = store.opts = { ...DEFAULT_OPTS, ...store.opts };
+let essay = null;      // saved record currently open
+let editingId = null;  // saved record being edited in the textarea (null = new essay)
+
+// The essay is modelled per word; the canvas is just a drawing of that state,
+// so it can be redrawn at any size (resize, rotate, zoom) without losing progress.
+let words = [];        // { el, s: sentence index, key: what typing is checked against, hint, boxes }
+let gaps = [];         // { el, prev, next: neighbouring word indices on the same line (-1 if none), boxes }
+let covered = [];      // per word
+let hl = [];           // per word: PALETTE index, -1 for none
+let missed = [];       // per word: marked as got wrong
+let cursor = -1;       // last word revealed; the next covered word after it is "next"
+let typed = '';        // letters typed towards the next word (type-to-check option)
+let stepping = false;  // show the next-word marker once the keyboard has been used
+let pen = 'cover';     // 'cover' | 'miss' | 'erase' | PALETTE index
 let undoStack = [];
 let redoStack = [];
-let highlightColor = swatches[0].dataset.color;
-let highlightTool = 'color';
-let lineHeightPx = 0;
+let act = null;        // the edit in progress (one undo step)
+let gesture = null;
+let lastTap = null;
 
-function highlightableEls() {
-  return textLayer.querySelectorAll('.word, .gap');
+// Layout, measured from the DOM
+let rows = [];         // rows[r] = [{ x0, x1, i }] hit boxes on text line r (i = -1 for gaps)
+let lineH = 24, W = 0, H = 0, dpr = 1, font = '', ascent = 0;
+
+/* ---------- storage ---------- */
+
+function loadStore() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (s && Array.isArray(s.essays)) return s;
+  } catch (e) {}
+  return { essays: [], openId: null };
 }
 
-function snapshot() {
-  return {
-    canvas: ctx.getImageData(0, 0, coverCanvas.width, coverCanvas.height),
-    highlights: Array.from(highlightableEls()).map(el => el.style.backgroundColor)
-  };
+function saveStore() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
 }
 
-function restore(state) {
-  ctx.putImageData(state.canvas, 0, 0);
-  Array.from(highlightableEls()).forEach((el, i) => {
-    el.style.backgroundColor = state.highlights[i] || '';
+let saveTimer = 0;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveNow, 300);
+}
+
+function saveNow() {
+  clearTimeout(saveTimer);
+  if (essay) {
+    essay.covered = covered.map(c => c ? '1' : '0').join('');
+    essay.hl = hl.map(c => c < 0 ? '-' : c).join('');
+    essay.missed = missed.map(c => c ? '1' : '0').join('');
+    essay.cursor = cursor;
+    essay.updated = Date.now();
+  }
+  saveStore();
+}
+
+window.addEventListener('pagehide', saveNow);
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); });
+
+function newId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+/* ---------- essays screen ---------- */
+
+function titleOf(rec) {
+  return rec.title || rec.text.trim().split('\n')[0];
+}
+
+function daysAgo(t) {
+  if (!t) return '';
+  const day = d => { d = new Date(d); d.setHours(0, 0, 0, 0); return d; };
+  const n = Math.round((day(Date.now()) - day(t)) / 864e5);
+  return n <= 0 ? 'today' : n === 1 ? 'yesterday' : n + ' days ago';
+}
+
+function showSetup() {
+  work.hidden = true;
+  setup.hidden = false;
+  essayTitle.textContent = '';
+  renderSaved();
+  if (store.essays.length) closeEditor();
+  else openEditor(null);
+}
+
+function renderSaved() {
+  savedList.textContent = '';
+  exportBtn.hidden = !store.essays.length;
+  if (!store.essays.length) return;
+  store.essays.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0)).forEach(rec => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    const open = document.createElement('button');
+    open.className = 'link open';
+    open.textContent = titleOf(rec);
+    open.title = 'Carry on where you left off';
+    open.addEventListener('click', () => openEssay(rec, false));
+
+    const misses = (rec.missed || '').split('1').length - 1;
+    const meta = document.createElement('span');
+    meta.className = 'muted meta';
+    meta.textContent = [
+      rec.text.split(/\s+/).filter(Boolean).length + ' words',
+      misses ? misses + ' missed' : '',
+      rec.updated ? 'practised ' + daysAgo(rec.updated) : ''
+    ].filter(Boolean).join(' · ');
+
+    const actions = document.createElement('span');
+    actions.className = 'muted actions';
+    const action = (label, fn) => {
+      const b = document.createElement('button');
+      b.className = 'link';
+      b.textContent = label;
+      b.addEventListener('click', fn);
+      actions.appendChild(b);
+    };
+    action('Edit', () => openEditor(rec));
+    action('Rename', () => {
+      const name = prompt('Name this essay', titleOf(rec));
+      if (name === null) return;
+      rec.title = name.trim() || undefined;  // blank goes back to the first line
+      saveStore();
+      renderSaved();
+    });
+    action('Delete', () => {
+      if (!confirm('Delete "' + titleOf(rec) + '"?')) return;
+      store.essays = store.essays.filter(e => e !== rec);
+      saveStore();
+      showSetup();
+    });
+    row.append(open, meta, actions);
+    savedList.appendChild(row);
   });
 }
 
-function pushUndo() {
-  undoStack.push(snapshot());
-  redoStack = [];
-  updateUndoRedoButtons();
+function openEditor(rec) {
+  editingId = rec ? rec.id : null;
+  essayInput.value = rec ? rec.text : '';
+  editor.hidden = false;
+  newBtn.hidden = true;
+  cancelBtn.hidden = !store.essays.length;
+  essayInput.focus();
 }
 
-function updateUndoRedoButtons() {
-  undoBtn.disabled = undoStack.length === 0;
-  redoBtn.disabled = redoStack.length === 0;
+function closeEditor() {
+  editingId = null;
+  editor.hidden = true;
+  newBtn.hidden = false;
 }
 
-undoBtn.addEventListener('click', () => {
-  if (undoStack.length === 0) return;
-  redoStack.push(snapshot());
-  restore(undoStack.pop());
-  updateUndoRedoButtons();
-});
-
-redoBtn.addEventListener('click', () => {
-  if (redoStack.length === 0) return;
-  undoStack.push(snapshot());
-  restore(redoStack.pop());
-  updateUndoRedoButtons();
-});
-
-coverAllBtn.addEventListener('click', () => {
-  pushUndo();
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, coverCanvas.width, coverCanvas.height);
-});
-
-document.querySelectorAll('input[name="tool"]').forEach(r => {
-  r.addEventListener('change', () => {
-    tool = document.querySelector('input[name="tool"]:checked').value;
-    updateModeUI();
-  });
-});
-
-document.querySelectorAll('input[name="submode"]').forEach(r => {
-  r.addEventListener('change', () => {
-    subMode = document.querySelector('input[name="submode"]:checked').value;
-    updateModeUI();
-  });
-});
-
-function updateModeUI() {
-  const isRevealOrRecover = tool === 'reveal' || tool === 'recover';
-  subModeControls.classList.toggle('active', isRevealOrRecover);
-  wholeUnit.classList.toggle('active', isRevealOrRecover && subMode === 'whole');
-  highlightControls.classList.toggle('active', tool === 'highlight');
-}
-updateModeUI();
-
-swatches.forEach(btn => {
-  btn.addEventListener('click', () => {
-    highlightColor = btn.dataset.color;
-    highlightTool = 'color';
-    swatches.forEach(s => s.classList.remove('selected'));
-    btn.classList.add('selected');
-    highlightEraserBtn.classList.remove('selected');
-  });
-});
-
-highlightEraserBtn.addEventListener('click', () => {
-  highlightTool = 'erase';
-  swatches.forEach(s => s.classList.remove('selected'));
-  highlightEraserBtn.classList.add('selected');
-});
+newBtn.addEventListener('click', () => openEditor(null));
+cancelBtn.addEventListener('click', closeEditor);
 
 startBtn.addEventListener('click', () => {
   const text = essayInput.value;
   if (!text.trim()) return;
-
-  // Build word-wrapped text layer, splitting into spans per word (keep sentence groupings via data attrs)
-  textLayer.innerHTML = '';
-  buildWordSpans(text);
-
-  essayInput.style.display = 'none';
-  startBtn.style.display = 'none';
-  stage.style.display = 'block';
-
-  sizeCoverCanvas();
+  let rec = editingId ? store.essays.find(e => e.id === editingId) : store.essays.find(e => e.text === text);
+  if (!rec) {
+    rec = { id: newId() };
+    store.essays.push(rec);
+  }
+  if (rec.text !== text) {
+    // the words changed, so per-word highlights and misses no longer line up
+    rec.text = text;
+    delete rec.hl;
+    delete rec.missed;
+  }
+  closeEditor();
+  openEssay(rec, true);
 });
 
-function sizeCoverCanvas() {
-  const w = textLayer.scrollWidth;
-  const h = textLayer.scrollHeight;
+exportBtn.addEventListener('click', () => {
+  saveNow();
+  const blob = new Blob([JSON.stringify({ app: 'essay-eraser', essays: store.essays })], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'essays-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
 
-  const cs = getComputedStyle(textLayer);
-  lineHeightPx = parseFloat(cs.lineHeight);
-  if (!lineHeightPx || isNaN(lineHeightPx)) {
-    lineHeightPx = parseFloat(cs.fontSize) * 1.5;
+importBtn.addEventListener('click', () => importFile.click());
+
+// Merge a backup in: new essays are added, ones you already have keep whichever copy is newer
+importFile.addEventListener('change', async () => {
+  const file = importFile.files[0];
+  importFile.value = '';
+  if (!file) return;
+  let list;
+  try {
+    const data = JSON.parse(await file.text());
+    list = Array.isArray(data) ? data : data.essays;
+    if (!Array.isArray(list)) throw new Error();
+  } catch (e) {
+    alert("That file isn't an Essay Eraser backup.");
+    return;
   }
+  let added = 0, updated = 0;
+  list.forEach(rec => {
+    if (!rec || typeof rec.text !== 'string' || !rec.text.trim()) return;
+    const mine = store.essays.find(e => e.id === rec.id || e.text === rec.text);
+    if (!mine) {
+      store.essays.push({ ...rec, id: rec.id || newId() });
+      added++;
+    } else if ((rec.updated || 0) > (mine.updated || 0)) {
+      Object.assign(mine, rec, { id: mine.id });
+      updated++;
+    }
+  });
+  saveStore();
+  showSetup();
+  alert(added || updated ? 'Restored ' + added + ' new and ' + updated + ' updated.' : 'Nothing new in that backup.');
+});
 
-  coverCanvas.width = w;
-  coverCanvas.height = h;
-  coverCanvas.style.width = w + 'px';
-  coverCanvas.style.height = h + 'px';
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, w, h);
-
-  lineCanvas.width = w;
-  lineCanvas.height = h;
-  lineCanvas.style.width = w + 'px';
-  lineCanvas.style.height = h + 'px';
-  drawRuledLines();
-
+// fresh: start fully covered (highlights and misses are kept)
+function openEssay(rec, fresh) {
+  essay = rec;
+  setup.hidden = true;
+  work.hidden = false;
+  essayTitle.textContent = ' · ' + titleOf(rec);
+  buildTokens(rec.text);
+  const n = words.length;
+  const load = (str, parse, fill) => str && str.length === n ? Array.from(str, parse) : new Array(n).fill(fill);
+  hl = load(rec.hl, c => c === '-' ? -1 : +c, -1);
+  missed = load(rec.missed, c => c === '1', false);
+  if (!fresh && rec.covered && rec.covered.length === n) {
+    covered = Array.from(rec.covered, c => c === '1');
+    cursor = rec.cursor ?? -1;
+  } else {
+    covered = new Array(n).fill(true);
+    cursor = -1;
+  }
   undoStack = [];
   redoStack = [];
-  updateUndoRedoButtons();
+  typed = '';
+  lastTap = null;
+  store.openId = rec.id;
+  window.scrollTo(0, 0);
+  measure();
+  // Coming back to an essay part-way through: pick up where you were
+  stepping = cursor >= 0 && nextCovered() >= 0;
+  if (stepping) scrollToWord(nextCovered());
+  commit();
 }
 
-// Ruled lines - drawn on a separate layer above the cover, never touched by
-// reveal/recover/highlight, so they can never be erased or covered over.
-function drawRuledLines() {
-  const w = lineCanvas.width;
-  const h = lineCanvas.height;
-  lctx.clearRect(0, 0, w, h);
-  lctx.strokeStyle = 'rgba(90,90,150,0.55)';
-  lctx.lineWidth = 1;
-  for (let y = lineHeightPx; y < h + 0.5; y += lineHeightPx) {
-    const ly = Math.round(y) + 0.5;
-    lctx.beginPath();
-    lctx.moveTo(0, ly);
-    lctx.lineTo(w, ly);
-    lctx.stroke();
-  }
-}
-
-// Every word/gap snaps vertically to its full text-line row (using the ruled-line
-// grid), not its own bounding rect, so adjacent reveals/covers tile with no gaps.
-function getRowRect(el) {
-  const canvasRect = coverCanvas.getBoundingClientRect();
-  const elRect = el.getBoundingClientRect();
-  const relTop = elRect.top - canvasRect.top;
-  const rowIndex = Math.max(0, Math.round(relTop / lineHeightPx));
-  return {
-    x: elRect.left - canvasRect.left - 0.5,
-    y: rowIndex * lineHeightPx,
-    width: elRect.width + 1,
-    height: lineHeightPx
-  };
-}
-
-window.addEventListener('resize', () => {
-  if (stage.style.display === 'block') sizeCoverCanvas();
+essaysBtn.addEventListener('click', () => {
+  saveNow();
+  essay = null;
+  store.openId = null;
+  saveStore();
+  options.open = false;
+  showSetup();
 });
 
-resetBtn.addEventListener('click', () => {
-  stage.style.display = 'none';
-  essayInput.style.display = 'block';
-  startBtn.style.display = 'inline-block';
-  textLayer.innerHTML = '';
+/* ---------- options ---------- */
+
+function applyOpts() {
+  help.hidden = !opts.help;
+  typingHelp.hidden = !opts.typing;
+  statusEl.hidden = !opts.count;
+  eraseBtn.textContent = 'Erase ' + opts.eraseStep + '%';
+  if (!opts.typing) typed = '';
+  document.querySelectorAll('[data-opt]').forEach(c => { c.checked = !!opts[c.dataset.opt]; });
+  eraseStep.value = opts.eraseStep;
+  timerMins.value = opts.timerMins;
+}
+
+function setOpt(key, value) {
+  opts[key] = value;
+  saveStore();
+  applyOpts();
+  draw();
+}
+
+document.querySelectorAll('[data-opt]').forEach(c => {
+  c.addEventListener('change', () => setOpt(c.dataset.opt, c.checked));
+});
+eraseStep.addEventListener('change', () => setOpt('eraseStep', +eraseStep.value));
+timerMins.addEventListener('change', () => setOpt('timerMins', Math.min(300, Math.max(1, Math.round(+timerMins.value) || 40))));
+hideHelp.addEventListener('click', () => setOpt('help', false));
+
+// Close the options menu when clicking anywhere else
+document.addEventListener('pointerdown', (e) => {
+  if (options.open && !options.contains(e.target)) options.open = false;
 });
 
-// Split essay into words, tag each word with a sentence index (newline-aware)
-function buildWordSpans(text) {
+// Timed write: a countdown for writing the essay out by hand under exam conditions
+function updateTimer() {
+  const end = store.timerEnd;
+  timerEl.hidden = !end;
+  timerBtn.textContent = end ? 'Stop' : 'Start';
+  if (!end) return;
+  const left = Math.ceil((end - Date.now()) / 1000);
+  timerEl.classList.toggle('up', left <= 0);
+  timerEl.textContent = left <= 0 ? "Time's up" : Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
+}
+
+function setTimer(end) {
+  store.timerEnd = end;
+  saveStore();
+  updateTimer();
+}
+
+timerBtn.addEventListener('click', () => {
+  setTimer(store.timerEnd ? null : Date.now() + opts.timerMins * 60000);
+  options.open = false;
+});
+timerEl.addEventListener('click', () => {
+  if (Date.now() >= store.timerEnd || confirm('Stop the timer?')) setTimer(null);
+});
+setInterval(updateTimer, 500);
+
+/* ---------- tokenising ---------- */
+
+const HINT_RE = /^[^\p{L}\p{N}]*[\p{L}\p{N}]?/u;
+const CLOSERS = `['"”’“‘»«)\\]]`;
+const ABBREVIATIONS = new Set([
+  'mr', 'mrs', 'ms', 'dr', 'jr', 'sr', 'st', 'vs', 'etc', 'cf', 'no', 'p', 'pp', 'ch', 'vol', 'fig', 'ed', 'eds', 'approx',
+  'bzw', 'usw', 'ca', 'vgl', 'nr', 'evtl', 'ggf', 'bspw', 'sog'
+]);
+
+// Does `word` end a sentence, given the word after it on the same line?
+function endsSentence(word, next) {
+  if (!next || !new RegExp(`[.!?]${CLOSERS}*$`).test(word)) return false;
+  if (!/^[^\p{L}\p{N}]*[\p{Lu}\p{N}]/u.test(next)) return false;
+  const core = word.replace(new RegExp(`${CLOSERS}+$`), '').replace(/^[^\p{L}\p{N}]+/u, '');
+  if (/^(\p{L}\.)+$/u.test(core)) return false;  // initials: T.S. Eliot, e.g., z.B.
+  return !(core.endsWith('.') && ABBREVIATIONS.has(core.slice(0, -1).toLowerCase()));
+}
+
+// What a typed answer has to match: case, accents and punctuation don't count
+function normalise(s) {
+  return s.toLowerCase().replace(/ß/g, 'ss').normalize('NFKD').replace(/[^\p{L}\p{N}]/gu, '');
+}
+
+function buildTokens(text) {
+  textLayer.textContent = '';
+  words = [];
+  gaps = [];
+  let s = 0;
   const lines = text.split('\n');
-  let sIndex = 0;
   lines.forEach((line, li) => {
-    if (line.trim() === '') {
-      textLayer.appendChild(document.createElement('br'));
-      return;
-    }
-    const parts = line.split(/(?<![Mm]r)(?<![Dd]r)(?<![Mm][ss])(?<![Jj]r)(?<![Ss]r)(\.)\s+(?=[A-Z])/);
-    const sentences = [];
-    for (let i = 0; i < parts.length; i += 2) {
-      if (parts[i].trim()) sentences.push(parts[i] + (parts[i+1] ? parts[i+1] + ' ' : ''));
-    }
-    sentences.forEach(sentence => {
-      if (sentence === '') return;
-      const tokens = sentence.split(/(\s+)/);
-      tokens.forEach(tok => {
-        if (tok === '') return;
-        if (/^\s+$/.test(tok)) {
-          const gap = document.createElement('span');
-          gap.className = 'gap';
-          gap.textContent = tok;
-          gap.dataset.sentence = sIndex;
-          textLayer.appendChild(gap);
-        } else {
-          const span = document.createElement('span');
-          span.className = 'word';
-          span.textContent = tok;
-          span.dataset.sentence = sIndex;
-          textLayer.appendChild(span);
-        }
-      });
-      sIndex++;
+    const toks = line.trim() ? line.split(/(\s+)/).filter(Boolean) : [];
+    const lineWords = toks.filter(t => !/^\s/.test(t));
+    let w = 0, gap = null;
+    toks.forEach(tok => {
+      const el = document.createElement('span');
+      el.textContent = tok;
+      if (/^\s/.test(tok)) {
+        el.className = 'gap';
+        gap = { el, prev: w > 0 ? words.length - 1 : -1, next: -1 };
+        gaps.push(gap);
+      } else {
+        el.className = 'word';
+        if (gap) gap.next = words.length;
+        gap = null;
+        words.push({ el, s, key: normalise(tok), hint: tok.match(HINT_RE)[0] });
+        if (endsSentence(tok, lineWords[w + 1])) s++;
+        w++;
+      }
+      textLayer.appendChild(el);
     });
+    if (lineWords.length) s++;
     if (li < lines.length - 1) textLayer.appendChild(document.createElement('br'));
   });
 }
 
-// Paint a single word/gap element according to the active tool. Reveal/recover
-// snap to the element's full text-line row (see getRowRect) so a drag across a
-// whole paragraph tiles cleanly with no gaps or leftover slivers.
-function paintEl(el) {
-  if (tool === 'highlight') {
-    el.style.backgroundColor = highlightTool === 'erase' ? '' : highlightColor;
+/* ---------- measuring and drawing ---------- */
+
+// Every word/gap snaps vertically to its full text-line row, so neighbouring
+// covers tile with no seams. Wrapped words get one box per line.
+function measure() {
+  const origin = textLayer.getBoundingClientRect();
+  const cs = getComputedStyle(textLayer);
+  lineH = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.5;
+  W = origin.width;
+  H = origin.height;
+  dpr = Math.min(window.devicePixelRatio || 1, 32000 / Math.max(H, 1));
+  canvas.width = Math.ceil(W * dpr);
+  canvas.height = Math.ceil(H * dpr);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  font = parseFloat(cs.fontSize) * dpr + 'px ' + cs.fontFamily;
+  ctx.font = font;
+  ascent = ctx.measureText('Hg').fontBoundingBoxAscent / dpr || 0;
+
+  rows = [];
+  const boxesOf = (el, i) => Array.from(el.getClientRects(), r => {
+    const top = r.top - origin.top;
+    const b = {
+      x: r.left - origin.left - 1,
+      w: r.width + 2,
+      row: Math.max(0, Math.floor((top + r.height / 2) / lineH)),
+      base: top + (ascent || r.height * 0.8)
+    };
+    (rows[b.row] ||= []).push({ x0: b.x, x1: b.x + b.w, i });
+    return b;
+  });
+  words.forEach((wd, i) => { wd.boxes = boxesOf(wd.el, i); });
+  gaps.forEach(g => { g.boxes = boxesOf(g.el, -1); });
+}
+
+new ResizeObserver(() => {
+  if (!work.hidden && words.length) { measure(); render(); }
+}).observe(textLayer);
+
+function fillBox(b, w = b.w) {
+  const x0 = Math.floor(b.x * dpr), x1 = Math.ceil((b.x + w) * dpr);
+  const y0 = Math.round(b.row * lineH * dpr), y1 = Math.round((b.row + 1) * lineH * dpr);
+  ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+}
+
+// A gap is covered only when the words either side are, so a lone hidden
+// word reads as a blank in the sentence and a covered run is one solid bar.
+function gapCovered(g) {
+  if (g.prev < 0 && g.next < 0) return false;
+  return (g.prev < 0 || covered[g.prev]) && (g.next < 0 || covered[g.next]);
+}
+
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#000';
+  words.forEach((wd, i) => { if (covered[i]) wd.boxes.forEach(b => fillBox(b)); });
+  gaps.forEach(g => { if (gapCovered(g)) g.boxes.forEach(b => fillBox(b)); });
+
+  ctx.font = font;
+  ctx.textBaseline = 'alphabetic';
+  if (opts.hints) {
+    ctx.fillStyle = '#8c8c8c';
+    words.forEach((wd, i) => {
+      const b = wd.boxes[0];
+      if (covered[i] && b) ctx.fillText(wd.hint, (b.x + 1) * dpr, b.base * dpr);
+    });
+  }
+
+  // Ruled lines sit on top of the cover, so they can never be covered
+  if (opts.lines) {
+    ctx.fillStyle = 'rgba(90,90,150,0.55)';
+    const t = Math.max(1, Math.round(dpr));
+    for (let y = lineH; y < H + 0.5; y += lineH) ctx.fillRect(0, Math.round(y * dpr), canvas.width, t);
+  }
+
+  const n = stepping || typed ? nextCovered() : -1;
+  const b = n >= 0 && words[n].boxes[0];
+  if (b) {
+    // what you've typed so far, written into the blank it's answering
+    if (typed) {
+      ctx.fillStyle = '#000';
+      fillBox(b, Math.max(b.w, ctx.measureText(typed).width / dpr + 4));
+      ctx.fillStyle = '#fff';
+      ctx.fillText(typed, (b.x + 1) * dpr, b.base * dpr);
+    }
+    ctx.fillStyle = '#2f7cff';
+    fillBox(b, 3);
+  }
+}
+
+function paintWords() {
+  const setBg = (t, c) => { if (t.bg !== c) { t.bg = c; t.el.style.backgroundColor = c; } };
+  words.forEach((wd, i) => {
+    setBg(wd, hl[i] >= 0 ? PALETTE[hl[i]] : '');
+    if (wd.miss !== missed[i]) {
+      wd.miss = missed[i];
+      wd.el.classList.toggle('missed', missed[i]);
+    }
+  });
+  gaps.forEach(g => {
+    const c = g.prev >= 0 && g.next >= 0 && hl[g.prev] >= 0 && hl[g.prev] === hl[g.next] ? PALETTE[hl[g.prev]] : '';
+    setBg(g, c);
+  });
+  if (opts.count) {
+    const misses = missed.filter(Boolean).length;
+    statusEl.textContent = covered.filter(Boolean).length + ' of ' + words.length + ' hidden' + (misses ? ' · ' + misses + ' missed' : '');
+  }
+}
+
+let frame = 0;
+function draw() {
+  if (!frame) frame = requestAnimationFrame(() => {
+    frame = 0;
+    paintWords();
+    render();
+  });
+}
+
+function commit() {
+  undoBtn.disabled = undoStack.length === 0;
+  redoBtn.disabled = redoStack.length === 0;
+  scheduleSave();
+  draw();
+}
+
+textLayer.addEventListener('animationend', e => e.target.classList.remove('flash-ok', 'flash-miss'));
+
+function flash(i, ok) {
+  const el = words[i].el;
+  el.classList.remove('flash-ok', 'flash-miss');
+  void el.offsetWidth;  // restart the animation if it's already running
+  el.classList.add(ok ? 'flash-ok' : 'flash-miss');
+}
+
+/* ---------- edits and undo ---------- */
+
+function snapshot() {
+  return { covered: covered.slice(), hl: hl.slice(), missed: missed.slice(), cursor };
+}
+
+function restore(s) {
+  covered = s.covered;
+  hl = s.hl;
+  missed = s.missed;
+  cursor = s.cursor;
+}
+
+function beginAction(pushUndo = true) {
+  act = { changed: false, maxRevealed: -1, minCovered: Infinity, pushed: pushUndo, redo: redoStack };
+  if (pushUndo) {
+    undoStack.push(snapshot());
+    if (undoStack.length > 300) undoStack.shift();
+    redoStack = [];
+  }
+}
+
+// Revealing moves the cursor to the furthest word revealed; hiding moves it
+// back to just before the first word hidden, so the next word picks up from there.
+function endAction(newCursor) {
+  if (act.pushed && !act.changed) {
+    undoStack.pop();
+    redoStack = act.redo;
+  }
+  if (newCursor !== undefined) cursor = newCursor;
+  else if (act.maxRevealed >= 0) cursor = act.maxRevealed;
+  else if (act.minCovered !== Infinity) cursor = act.minCovered - 1;
+  act = null;
+  commit();
+}
+
+function cancelAction() {
+  if (act.pushed) {
+    restore(undoStack.pop());
+    redoStack = act.redo;
+  }
+  act = null;
+  commit();
+}
+
+function setCovered(i, v) {
+  if (covered[i] === v) return;
+  covered[i] = v;
+  act.changed = true;
+  if (v) act.minCovered = Math.min(act.minCovered, i);
+  else act.maxRevealed = Math.max(act.maxRevealed, i);
+}
+
+function setHl(i, v) {
+  if (hl[i] === v) return;
+  hl[i] = v;
+  act.changed = true;
+}
+
+function setMissed(i, v) {
+  if (missed[i] === v) return;
+  missed[i] = v;
+  act.changed = true;
+}
+
+// What the current pen does to word i: every pen toggles
+function penTarget(i) {
+  if (pen === 'cover') return !covered[i];
+  if (pen === 'miss') return !missed[i];
+  if (pen === 'erase') return -1;
+  return hl[i] === pen ? -1 : pen;
+}
+
+function penApply(i, target) {
+  if (pen === 'cover') setCovered(i, target);
+  else if (pen === 'miss') setMissed(i, target);
+  else setHl(i, target);
+}
+
+function undo() {
+  if (!undoStack.length || act) return;
+  redoStack.push(snapshot());
+  restore(undoStack.pop());
+  commit();
+}
+
+function redo() {
+  if (!redoStack.length || act) return;
+  undoStack.push(snapshot());
+  restore(redoStack.pop());
+  commit();
+}
+
+undoBtn.addEventListener('click', undo);
+redoBtn.addEventListener('click', redo);
+
+function sentenceOf(i) {
+  let a = i, b = i;
+  while (a > 0 && words[a - 1].s === words[i].s) a--;
+  while (b < words.length - 1 && words[b + 1].s === words[i].s) b++;
+  const out = [];
+  for (let j = a; j <= b; j++) out.push(j);
+  return out;
+}
+
+showAllBtn.addEventListener('click', () => {
+  beginAction();
+  words.forEach((_, i) => setCovered(i, false));
+  endAction(words.length - 1);
+});
+
+coverAllBtn.addEventListener('click', () => {
+  beginAction();
+  words.forEach((_, i) => setCovered(i, true));
+  endAction(-1);
+});
+
+// Progressive erasing: each press hides another slice of the essay,
+// starting with the words you've missed
+eraseBtn.addEventListener('click', () => {
+  const visible = [];
+  covered.forEach((c, i) => { if (!c) visible.push(i); });
+  for (let i = visible.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [visible[i], visible[j]] = [visible[j], visible[i]];
+  }
+  visible.sort((a, b) => missed[b] - missed[a]);
+  beginAction();
+  visible.slice(0, Math.ceil(words.length * opts.eraseStep / 100)).forEach(i => setCovered(i, true));
+  endAction(-1);
+});
+
+/* ---------- pens ---------- */
+
+PALETTE.forEach((c, i) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'swatch';
+  b.dataset.pen = i;
+  b.title = COLOUR_NAMES[i] + ' highlighter';
+  b.style.background = c;
+  pens.insertBefore(b, missPen);
+});
+
+pens.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-pen]');
+  if (b) selectPen(b.dataset.pen);
+});
+
+function selectPen(p) {
+  pen = isNaN(p) ? p : +p;
+  lastTap = null;
+  pens.querySelectorAll('[data-pen]').forEach(b => b.classList.toggle('selected', b.dataset.pen === String(pen)));
+}
+
+/* ---------- pointer: tap, double-tap, sweep, mark missed ---------- */
+
+function wordAt(x, y, origin = textLayer.getBoundingClientRect()) {
+  const row = rows[Math.floor((y - origin.top) / lineH)];
+  if (!row) return -1;
+  const rx = x - origin.left;
+  const hit = row.find(b => rx >= b.x0 && rx < b.x1);
+  return hit ? hit.i : -1;
+}
+
+function tap(x, y) {
+  const i = wordAt(x, y);
+  const now = performance.now();
+  if (i < 0) { lastTap = null; return; }
+  if (lastTap && lastTap.i === i && lastTap.pen === pen && now - lastTap.t < 400) {
+    // Double tap: spread what the first tap did over the whole sentence, as the same undo step
+    beginAction(false);
+    sentenceOf(i).forEach(j => penApply(j, lastTap.target));
+    lastTap = null;
+    endAction();
     return;
   }
-  const r = getRowRect(el);
-  if (tool === 'reveal') {
-    ctx.clearRect(r.x, r.y, r.width, r.height);
-  } else if (tool === 'recover') {
-    ctx.fillStyle = '#000';
-    ctx.fillRect(r.x, r.y, r.width, r.height);
+  const target = penTarget(i);
+  beginAction();
+  penApply(i, target);
+  endAction();
+  lastTap = { i, pen, target, t: now };
+}
+
+// Right-click, pen barrel button or long-press: flag a word you got wrong, whatever the pen
+function toggleMissedAt(x, y) {
+  const i = wordAt(x, y);
+  if (i < 0) return;
+  beginAction();
+  setMissed(i, !missed[i]);
+  endAction();
+}
+
+// Sample the pointer's path every few px so fast sweeps don't skip words.
+// The first word touched decides the direction (reveal vs hide, colour vs clear).
+function sweepTo(g, x, y) {
+  const origin = textLayer.getBoundingClientRect();
+  const steps = Math.max(1, Math.ceil(Math.hypot(x - g.x, y - g.y) / 4));
+  for (let k = g.started ? 1 : 0; k <= steps; k++) {
+    const i = wordAt(g.x + (x - g.x) * k / steps, g.y + (y - g.y) * k / steps, origin);
+    if (i < 0) continue;
+    if (g.target === undefined) g.target = penTarget(i);
+    penApply(i, g.target);
   }
+  g.started = true;
+  g.x = x;
+  g.y = y;
 }
 
-function elementAt(clientX, clientY) {
-  coverCanvas.style.pointerEvents = 'none';
-  const el = document.elementFromPoint(clientX, clientY);
-  coverCanvas.style.pointerEvents = 'auto';
-  if (!el || !el.classList) return null;
-  if (!el.classList.contains('word') && !el.classList.contains('gap')) return null;
-  return el;
-}
-
-function paintAt(clientX, clientY) {
-  const el = elementAt(clientX, clientY);
-  if (el) paintEl(el);
-}
-
-// PARTIAL drag (reveal/recover, word-snapped) and HIGHLIGHTER both paint
-// continuously on drag; WHOLE reveal/recover paint once per click (below).
-function isDragTool() {
-  return tool === 'highlight' || ((tool === 'reveal' || tool === 'recover') && subMode === 'partial');
-}
-
-coverCanvas.addEventListener('mousedown', (e) => {
-  if (!isDragTool()) return;
-  drawing = true;
-  pushUndo();
-  paintAt(e.clientX, e.clientY);
-});
-coverCanvas.addEventListener('mousemove', (e) => {
-  if (!drawing) return;
-  paintAt(e.clientX, e.clientY);
-});
-window.addEventListener('mouseup', () => drawing = false);
-
-coverCanvas.addEventListener('touchstart', (e) => {
-  if (!isDragTool()) return;
-  const t = e.touches[0];
-  drawing = true;
-  pushUndo();
-  paintAt(t.clientX, t.clientY);
-  e.preventDefault();
-}, { passive: false });
-coverCanvas.addEventListener('touchmove', (e) => {
-  if (!drawing) return;
-  const t = e.touches[0];
-  paintAt(t.clientX, t.clientY);
-  e.preventDefault();
-}, { passive: false });
-coverCanvas.addEventListener('touchend', () => drawing = false);
-
-// WHOLE reveal/recover (word/sentence) - single click
-coverCanvas.addEventListener('click', (e) => {
-  if (tool === 'highlight') return;
-  if (subMode !== 'whole') return;
-
-  const el = elementAt(e.clientX, e.clientY);
-  if (!el || !el.classList.contains('word')) return;
-
-  pushUndo();
-
-  const unit = wholeUnit.value;
-  if (unit === 'word') {
-    paintEl(el);
-  } else {
-    const sIndex = el.dataset.sentence;
-    const sentenceEls = textLayer.querySelectorAll(`.word[data-sentence="${sIndex}"], .gap[data-sentence="${sIndex}"]`);
-    sentenceEls.forEach(w => paintEl(w));
+stage.addEventListener('pointerdown', (e) => {
+  if (gesture) return;
+  typed = '';
+  if (e.button === 2) {
+    toggleMissedAt(e.clientX, e.clientY);
+    return;
   }
+  if (e.button !== 0) return;
+  const g = gesture = { id: e.pointerId, x: e.clientX, y: e.clientY, sweeping: false, started: false, target: undefined };
+  if (e.pointerType !== 'mouse') g.hold = setTimeout(() => {
+    if (gesture !== g || g.sweeping) return;
+    gesture = null;
+    toggleMissedAt(g.x, g.y);
+  }, 550);
+  try { stage.setPointerCapture(e.pointerId); } catch (err) {}
 });
+
+stage.addEventListener('pointermove', (e) => {
+  // A hovering pen gets full freedom to sweep diagonally; fingers keep vertical scrolling
+  if (e.pointerType === 'pen' && !e.buttons) stage.style.touchAction = 'none';
+  const g = gesture;
+  if (!g || e.pointerId !== g.id) return;
+  if (!g.sweeping) {
+    if (Math.hypot(e.clientX - g.x, e.clientY - g.y) < 6) return;
+    clearTimeout(g.hold);
+    g.sweeping = true;
+    beginAction();
+  }
+  sweepTo(g, e.clientX, e.clientY);
+  commit();
+});
+
+stage.addEventListener('pointerup', (e) => {
+  const g = gesture;
+  if (!g || e.pointerId !== g.id) return;
+  clearTimeout(g.hold);
+  gesture = null;
+  if (g.sweeping) endAction();
+  else tap(g.x, g.y);
+});
+
+// The browser took the gesture over (a finger scroll): drop whatever it painted
+stage.addEventListener('pointercancel', (e) => {
+  const g = gesture;
+  if (!g || e.pointerId !== g.id) return;
+  clearTimeout(g.hold);
+  gesture = null;
+  if (g.sweeping) cancelAction();
+});
+
+stage.addEventListener('pointerleave', (e) => {
+  if (e.pointerType === 'pen') stage.style.touchAction = '';
+});
+
+stage.addEventListener('contextmenu', e => e.preventDefault());
+
+/* ---------- keyboard: recite and check ---------- */
+
+// The next covered word to recall. Punctuation-only tokens ("/", "–") are
+// never the target; they're revealed along with the word beside them.
+function nextCovered() {
+  for (let i = cursor + 1; i < words.length; i++) if (covered[i] && words[i].key) return i;
+  for (let i = 0; i <= cursor && i < words.length; i++) if (covered[i] && words[i].key) return i;
+  return -1;
+}
+
+function revealWord(n) {
+  setCovered(n, false);
+  for (let j = n - 1; j >= 0 && covered[j] && !words[j].key; j--) setCovered(j, false);
+  for (let j = n + 1; j < words.length && covered[j] && !words[j].key; j++) setCovered(j, false);
+}
+
+function isMatch(guess, key) {
+  const g = normalise(guess);
+  if (g === key) return true;
+  return key.length >= 5 && editDistance(g, key) <= 1;  // forgive a typo in a longer word
+}
+
+function editDistance(a, b) {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[b.length];
+}
+
+// Type to check: reveal the word either way; a wrong answer marks it missed,
+// a right one clears an earlier miss
+function checkTyped() {
+  const guess = typed;
+  typed = '';
+  const n = nextCovered();
+  if (n < 0) return draw();
+  const ok = isMatch(guess, words[n].key);
+  beginAction();
+  revealWord(n);
+  setMissed(n, !ok);
+  endAction();
+  flash(n, ok);
+  afterStep();
+}
+
+function stepWord() {
+  const n = nextCovered();
+  if (n < 0) return;
+  beginAction();
+  revealWord(n);
+  endAction();
+  afterStep();
+}
+
+function stepSentence() {
+  const n = nextCovered();
+  if (n < 0) return;
+  beginAction();
+  sentenceOf(n).forEach(j => setCovered(j, false));
+  endAction();
+  afterStep();
+}
+
+function stepBack() {
+  let i = Math.min(cursor, words.length - 1);
+  while (i >= 0 && (covered[i] || !words[i].key)) i--;
+  if (i < 0) return;
+  beginAction();
+  setCovered(i, true);
+  endAction();
+  afterStep();
+}
+
+function typeChar(c) {
+  if (nextCovered() < 0 || typed.length >= 40) return;
+  typed += c;
+  stepping = true;
+  draw();
+}
+
+function afterStep() {
+  stepping = true;
+  scrollToWord(nextCovered());
+}
+
+// Keep a word on screen, below the sticky toolbar
+function scrollToWord(i) {
+  const b = i >= 0 && words[i].boxes[0];
+  if (!b) return;
+  const top = textLayer.getBoundingClientRect().top + b.row * lineH;
+  const minY = Math.max(0, controls.getBoundingClientRect().bottom) + lineH;
+  const maxY = window.innerHeight - 2 * lineH;
+  if (top < minY || top + lineH > maxY) window.scrollBy(0, top - minY - (window.innerHeight - minY) / 3);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (work.hidden || act || e.isComposing) return;
+  if (e.key === 'Escape' && options.open) {
+    options.open = false;
+    return;
+  }
+  if (e.target.closest && e.target.closest('#options .panel')) return;  // let the menu's own fields work
+  const mod = (e.ctrlKey || e.metaKey) && !e.altKey;  // Ctrl+Alt is AltGr on Windows keyboards
+  if (mod && e.key.toLowerCase() === 'z') {
+    e.preventDefault();
+    e.shiftKey ? redo() : undo();
+    return;
+  }
+  if (mod && e.key.toLowerCase() === 'y') {
+    e.preventDefault();
+    redo();
+    return;
+  }
+  if (mod || (e.altKey && !e.ctrlKey)) return;
+  let fn;
+  if (e.key.length === 1 && e.key !== ' ') {
+    if (!opts.typing) return;
+    fn = () => typeChar(e.key);
+  } else fn = {
+    ' ': () => typed ? checkTyped() : stepWord(),
+    'Enter': () => typed ? checkTyped() : stepSentence(),
+    'ArrowRight': stepWord,
+    'ArrowLeft': stepBack,
+    'Backspace': () => { if (typed) { typed = typed.slice(0, -1); draw(); } else stepBack(); },
+    'Escape': () => { if (typed) { typed = ''; draw(); } else selectPen('cover'); }
+  }[e.key];
+  if (!fn) return;
+  e.preventDefault();
+  // A focused button or checkbox would otherwise also react to Space/Enter
+  if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+  fn();
+});
+
+/* ---------- start ---------- */
+
+applyOpts();
+updateTimer();
+const reopen = store.essays.find(e => e.id === store.openId);
+if (reopen) openEssay(reopen, false);
+else showSetup();
 </script>
 
 </body>
