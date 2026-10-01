@@ -1,188 +1,300 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Essay Eraser</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f6f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131313" media="(prefers-color-scheme: dark)">
+<title>EasyEssay</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
 <style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f6f4;
+    --paper: #fff;
+    --ink: #111;
+    --muted: #6b6b6b;
+    --line: #d9d9d6;
+    --soft: #ededea;
+    --accent: #2f6fed;
+    --red: #d32f2f;
+    --shadow: 0 1px 2px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05);
+    --ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --pad-x: 26px;
+    --pad-y: 22px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #131313;
+      --paper: #1c1c1c;
+      --ink: #e8e8e6;
+      --muted: #9a9a97;
+      --line: #3a3a38;
+      --soft: #2a2a28;
+      --accent: #6a9cff;
+      --red: #ff6b6b;
+      --shadow: none;
+    }
+  }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   body {
-    font-family: Arial, sans-serif;
-    font-size: 12pt;
-    line-height: 1.5;
-    color: #000;
-    background: #fff;
-    margin: 20px;
+    font-family: var(--ui);
+    font-size: 15px;
+    line-height: 1.45;
+    color: var(--ink);
+    background: var(--bg);
+    margin: 0;
   }
-  h2 { font-weight: normal; margin: 0 0 14px; }
-  #essayTitle { color: #888; }
-  textarea {
-    width: 100%;
-    height: 200px;
-    font-family: Arial, sans-serif;
-    font-size: 12pt;
-    line-height: 1.5;
-    padding: 10px;
-    border: 1px solid #bbb;
+  .wrap { max-width: 920px; margin: 0 auto; padding: 20px 20px 48px; }
+  h1 { font-size: 22px; font-weight: 650; letter-spacing: -0.01em; margin: 6px 0 18px; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  textarea, input[type=text], input[type=number], select {
+    background: var(--paper);
+    border: 1px solid var(--line);
     border-radius: 8px;
+    padding: 6px 9px;
   }
-  button { font-family: Arial, sans-serif; }
+  textarea {
+    display: block;
+    width: 100%;
+    font-family: Arial, sans-serif;
+    font-size: 12pt;
+    line-height: 1.5;
+    padding: 12px 14px;
+    border-radius: 10px;
+    resize: vertical;
+  }
+  textarea:focus, input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   .link {
     all: unset;
     cursor: pointer;
     text-decoration: underline;
+    text-underline-offset: 2px;
   }
-  .link:focus-visible { outline: 2px solid #000; }
-  .muted { color: #666; font-size: 10pt; }
+  .link:focus-visible { outline: 2px solid var(--accent); }
+  .muted { color: var(--muted); font-size: 13px; }
 
   /* one button style for the whole app */
-  .btn, #controls button, #options summary {
-    font-size: 10.5pt;
-    line-height: 1.3;
-    padding: 5px 11px;
-    border: 1px solid #c4c4c4;
-    border-radius: 7px;
-    background: #fff;
-    color: #000;
+  .btn {
+    font-size: 13.5px;
+    line-height: 1.2;
+    padding: 7px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn:hover:not(:disabled) { background: var(--soft); }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+  .btn.primary { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+  .btn.primary:hover:not(:disabled) { background: var(--ink); opacity: 0.85; }
+  .btn.quiet { border-color: transparent; background: transparent; padding-left: 6px; padding-right: 8px; }
+
+  /* buttons that belong together sit joined in one pill */
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper);
+  }
+  .seg .btn { border: 0; border-radius: 0; background: transparent; }
+  .seg > :not(:first-child) { border-left: 1px solid var(--line); }
+  .seg > :first-child, .seg > :first-child > summary { border-radius: 7px 0 0 7px; }
+  .seg > :last-child, .seg > :last-child > summary { border-radius: 0 7px 7px 0; }
+  .seg .btn.selected, .seg .btn.selected:hover { background: var(--ink); color: var(--paper); }
+
+  /* drop-down menus */
+  .menu { position: relative; display: inline-block; }
+  .menu > summary { display: block; list-style: none; user-select: none; -webkit-user-select: none; }
+  .menu > summary::-webkit-details-marker { display: none; }
+  .menu[open] > summary { background: var(--soft); }
+  .menu > .panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 5;
+    width: max-content;
+    min-width: 200px;
+    max-width: min(360px, calc(100vw - 40px));
+    max-height: calc(100vh - 140px);
+    overflow: auto;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.16);
+    padding: 6px;
+    display: grid;
+    gap: 1px;
+    font-size: 13.5px;
+    white-space: normal;
+  }
+  .menu.left > .panel { left: 0; right: auto; }
+  .panel .item {
+    all: unset;
+    display: block;
+    padding: 8px 10px;
+    border-radius: 8px;
     cursor: pointer;
   }
-  .btn:hover, #controls button:hover:not(:disabled), #options summary:hover { background: #f0f0f0; }
-  .btn.primary { background: #000; border-color: #000; color: #fff; }
-  .btn.primary:hover { background: #333; }
-  #controls button:disabled { opacity: 0.35; cursor: default; }
+  .panel .item:hover, .panel .item:focus-visible { background: var(--soft); }
+  .panel .item small { display: block; color: var(--muted); font-size: 12px; }
+  .panel .item.danger { color: var(--red); }
+  .panel label, .panel .line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 8px;
+  }
+  .panel label:hover { background: var(--soft); }
+  .panel .head {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    padding: 9px 10px 3px;
+  }
+  .panel input[type=number] { width: 4.5em; padding: 3px 6px; }
+  .panel select { padding: 3px 6px; }
 
   /* ---- essays screen ---- */
   #saved .row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 12px;
-    padding: 9px 12px;
-    margin-bottom: 6px;
-    border: 1px solid #e2e2e2;
-    border-radius: 9px;
+    gap: 6px 14px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
   }
-  #saved .row:hover { background: #fafafa; border-color: #ccc; }
-  #saved .open {
-    text-decoration: none;
-    font-weight: bold;
-    white-space: nowrap;
-  }
+  #saved .open { text-decoration: none; font-weight: 600; white-space: nowrap; }
   #saved .open:hover { text-decoration: underline; }
   #saved .meta {
     flex: 1;
-    min-width: 0;
+    min-width: 120px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  #saved .actions { white-space: nowrap; }
-  #saved .actions .link { margin-left: 10px; }
+  .dots { white-space: nowrap; line-height: 1; }
+  .dots i {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 3px;
+    border: 1px solid var(--muted);
+    border-radius: 50%;
+  }
+  .dots i.going { background: var(--line); }
+  .dots i.done { background: var(--ink); border-color: var(--ink); }
   #newBtn { margin: 6px 0 22px; }
   #editor { margin-bottom: 22px; }
-  #editor .btn { margin-top: 8px; margin-right: 6px; }
+  #essayInput { height: 240px; }
+  #editor .check { display: flex; gap: 8px; align-items: baseline; margin: 12px 0 0; flex-wrap: wrap; }
+  #secs {
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  #secs .naming { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; font-size: 13.5px; }
+  #secs .naming input { width: 9em; }
+  .sec { display: flex; gap: 10px; align-items: center; padding: 3px 0; }
+  .sec input { width: 11em; flex: none; font-size: 13.5px; }
+  .sec .muted { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #editor .go { margin-top: 12px; display: flex; gap: 8px; }
   #backup { display: flex; gap: 18px; }
 
   /* ---- toolbar ---- */
   #controls {
     position: sticky;
     top: 0;
-    z-index: 2;
-    background: #fff;
+    z-index: 4;
+    background: var(--bg);
+    margin: 0 0 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    display: grid;
+    gap: 10px;
+  }
+  /* on a phone the toolbar is too tall to pin over the essay */
+  @media (max-width: 700px) {
+    #controls { position: static; }
+    .wrap { padding: 12px 12px 40px; }
+    :root { --pad-x: 16px; --pad-y: 16px; }
+  }
+  #bar, #tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+  #essayTitle {
+    flex: 1;
+    min-width: 60px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #right { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  #status { color: var(--muted); font-size: 13px; }
+  #timer { font-variant-numeric: tabular-nums; }
+  #timer.up { color: var(--red); border-color: var(--red); }
+  #work:not([data-view="essay"]) .ess { display: none; }
+  .cross { color: var(--red); font-weight: bold; }
+  #hlDot {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    margin-right: 5px;
+    border-radius: 50%;
+    border: 1px solid rgba(128,128,128,0.6);
+    vertical-align: -1px;
+  }
+  #swatches { display: flex; gap: 8px; padding: 8px 10px; }
+  #swatches button {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid rgba(128,128,128,0.6);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  #swatches button.selected { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--ink); }
+
+  /* messages above the essay: the practice ladder, results, the mic and the reader */
+  .note {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 8px 12px;
-    margin: 0 0 10px;
-    padding: 10px 0;
-    border-top: 1px solid #000;
-    border-bottom: 1px solid #000;
-  }
-  /* on a phone the toolbar wraps to several rows; don't pin it over the essay */
-  @media (max-width: 700px) {
-    #controls { position: static; }
-  }
-  /* buttons that belong together sit joined in one pill */
-  .group { display: inline-flex; }
-  #controls .group > button { border-radius: 0; margin-left: -1px; }
-  #controls .group > button:first-child { border-radius: 7px 0 0 7px; margin-left: 0; }
-  #controls .group > button:last-child { border-radius: 0 7px 7px 0; }
-
-  /* the tool tray: the cover pen, six highlighters, Missed and the eraser */
-  #pens {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 5px;
-    border: 1px solid #c4c4c4;
-    border-radius: 999px;
-    background: #f5f5f5;
-  }
-  #controls #pens .swatch {
-    width: 22px;
-    height: 22px;
-    padding: 0;
-    border: 1px solid rgba(0,0,0,0.3);
-    border-radius: 50%;
-  }
-  #controls #pens .swatch[data-pen="cover"] { margin-right: 5px; }
-  #controls #pens .tool {
-    border: 0;
-    border-radius: 999px;
-    background: transparent;
-    padding: 3px 10px;
-  }
-  #controls #pens .tool:hover:not(.selected) { background: #e4e4e4; }
-  #controls #pens .swatch.selected { box-shadow: 0 0 0 2px #f5f5f5, 0 0 0 4px #000; }
-  #controls #pens .tool.selected { background: #000; color: #fff; }
-  .cross { color: #d32f2f; font-weight: bold; }
-  .tool.selected .cross { color: #ff6b6b; }
-
-  #right {
-    margin-left: auto;
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-  }
-  #status { color: #666; font-size: 10pt; }
-  #controls #timer { font-variant-numeric: tabular-nums; }
-  #controls #timer.up { color: #d32f2f; border-color: #d32f2f; }
-  #options { position: relative; }
-  #options summary { display: block; list-style: none; user-select: none; }
-  #options summary::-webkit-details-marker { display: none; }
-  #options[open] summary { background: #f0f0f0; }
-  #options .panel {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 6px);
-    z-index: 3;
-    width: max-content;
-    max-width: min(420px, calc(100vw - 40px));
-    max-height: calc(100vh - 140px);
-    overflow: auto;
-    background: #fff;
-    border: 1px solid #c4c4c4;
+    margin: 0 0 12px;
+    padding: 11px 14px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
     border-radius: 10px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.14);
-    padding: 12px 16px;
-    display: grid;
-    gap: 7px;
-    font-size: 10.5pt;
+    font-size: 14px;
   }
-  #options .panel hr { width: 100%; border: 0; border-top: 1px solid #e2e2e2; margin: 3px 0; }
-  #options input[type=number] { width: 4em; }
-  #controls #options .panel button { padding: 2px 10px; }
-  #help {
-    font-size: 10pt;
-    color: #666;
-    margin: 0 0 10px;
-  }
+  .note > span:first-child { flex: 1 1 260px; }
+  .note details { flex-basis: 100%; font-size: 13.5px; }
+  .note summary { cursor: pointer; color: var(--muted); }
+  .attempt { margin-top: 6px; white-space: pre-wrap; }
+  .attempt s { color: var(--red); }
+  #help { font-size: 13px; color: var(--muted); margin: 0 0 12px; }
 
   /* ---- essay ---- */
   #stage {
     position: relative;
-    border: 1px solid #000;
-    padding: 10px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: var(--pad-y) var(--pad-x);
     cursor: crosshair;
     user-select: none;
     -webkit-user-select: none;
@@ -191,35 +303,109 @@
     touch-action: pan-y pinch-zoom;
   }
   #textLayer {
+    font-family: Arial, sans-serif;
+    font-size: 12pt;
+    line-height: 1.5;
     white-space: pre-wrap;
     overflow-wrap: break-word;
   }
+  /* a paragraph heading takes exactly one text line, so the cover grid still lines up */
+  .ptitle {
+    font-family: var(--ui);
+    font-size: 0.8em;
+    line-height: 1.875;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--accent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   #cover {
     position: absolute;
-    top: 10px;
-    left: 10px;
+    top: var(--pad-y);
+    left: var(--pad-x);
     pointer-events: none;
   }
   /* a word you got wrong; stays red until you clear it (or type it right) */
-  .word.missed { color: #d32f2f; }
+  .word.missed { color: var(--red); }
   @keyframes flash-ok { from { background-color: rgba(0,190,0,0.4); } }
   @keyframes flash-miss { from { background-color: rgba(255,0,0,0.5); } }
   .flash-ok { animation: flash-ok 0.6s ease-out; }
   .flash-miss { animation: flash-miss 1s ease-out; }
+
+  /* ---- blank page and adapt ---- */
+  #blank .top, #blank .go, #adapt .go { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0 0 10px; }
+  #blank .go, #adapt .go { margin: 10px 0 0; }
+  #blankInput { height: 55vh; min-height: 220px; }
+  #adaptQ {
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.35;
+    margin: 4px 0 8px;
+  }
+  #adaptEditor { margin: 10px 0; }
+  #adaptList { height: 130px; margin-bottom: 8px; font-size: 11pt; }
+  .part { margin-top: 16px; }
+  .part b { font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--accent); }
+  .part p { margin: 3px 0 7px; font-size: 13.5px; color: var(--muted); }
+  .part textarea { height: 76px; font-size: 11pt; }
+
+  /* ---- step buttons for touch screens ---- */
+  #stepBar { display: none; }
+  @media (pointer: coarse), (max-width: 700px) {
+    #work[data-view="essay"] #stepBar {
+      display: flex;
+      gap: 8px;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 4;
+      padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+      background: var(--bg);
+      border-top: 1px solid var(--line);
+    }
+    #work[data-view="essay"] { padding-bottom: 64px; }
+    #stepBar .btn { flex: 1; padding: 11px 0; }
+    #typeIn { flex: 2; min-width: 0; font-size: 16px; }
+    #help .keys { display: none; }
+  }
 </style>
 </head>
 <body>
-
-<h2>Essay Eraser<span id="essayTitle"></span></h2>
+<div class="wrap">
 
 <div id="setup">
+  <h1>EasyEssay</h1>
   <div id="saved"></div>
   <button id="newBtn" class="btn">+ New essay</button>
   <div id="editor" hidden>
     <textarea id="essayInput" placeholder="Paste your essay here..."></textarea>
-    <br>
-    <button id="startBtn" class="btn primary">Cover Essay</button>
-    <button id="cancelBtn" class="btn">Cancel</button>
+    <label class="check">
+      <input type="checkbox" id="detect" checked>
+      <span>Split into titled paragraphs</span>
+      <span class="muted">joins stray line breaks and puts a heading above each paragraph</span>
+    </label>
+    <div id="secs" hidden>
+      <div class="naming">
+        Name body paragraphs
+        <select id="naming">
+          <option value="single">Body 1, Body 2, ...</option>
+          <option value="pair">by two texts in turn</option>
+        </select>
+        <span id="pairNames" hidden>
+          <input type="text" id="textA" placeholder="First text">
+          <input type="text" id="textB" placeholder="Second text">
+        </span>
+      </div>
+      <div id="secList"></div>
+    </div>
+    <div class="go">
+      <button id="startBtn" class="btn primary">Cover essay</button>
+      <button id="cancelBtn" class="btn">Cancel</button>
+    </div>
   </div>
   <div id="backup" class="muted">
     <button id="exportBtn" class="link">Back up essays to a file</button>
@@ -228,63 +414,133 @@
   </div>
 </div>
 
-<div id="work" hidden>
+<div id="work" data-view="essay" hidden>
   <div id="controls">
-    <button id="essaysBtn" title="Back to your essays">‹ Essays</button>
-    <span id="pens">
-      <button type="button" class="swatch selected" data-pen="cover" title="Reveal / hide" style="background:#000"></button>
-      <button type="button" class="tool" id="missPen" data-pen="miss" title="Mark words you got wrong (or right-click a word)"><span class="cross">✗</span> Missed</button>
-      <button type="button" class="tool" id="eraserPen" data-pen="erase" title="Clear highlights">Eraser</button>
-    </span>
-    <span class="group">
-      <button id="showAllBtn">Show All</button>
-      <button id="eraseBtn" title="Hide more of the essay at random, starting with words you've missed">Erase 20%</button>
-      <button id="coverAllBtn">Cover All</button>
-    </span>
-    <span class="group">
-      <button id="undoBtn" disabled title="Undo (Ctrl+Z)">↶ Undo</button>
-      <button id="redoBtn" disabled title="Redo (Ctrl+Y)">Redo ↷</button>
-    </span>
-    <span id="right">
-      <span id="status" hidden></span>
-      <button id="timer" hidden title="Stop the timer"></button>
-      <details id="options">
-        <summary>Options ▾</summary>
-        <div class="panel">
-          <label><input type="checkbox" data-opt="hints"> First letters on hidden words</label>
-          <label><input type="checkbox" data-opt="typing"> Type to check: type the next word, then Space</label>
-          <label><input type="checkbox" data-opt="count"> Show hidden and missed counts</label>
-          <label><input type="checkbox" data-opt="lines"> Ruled lines</label>
-          <label><input type="checkbox" data-opt="help"> Help line</label>
-          <hr>
-          <label>Erase <select id="eraseStep">
-            <option value="10">10</option>
-            <option value="20">20</option>
-            <option value="25">25</option>
-            <option value="33">33</option>
-            <option value="50">50</option>
-          </select> % of the essay each time</label>
-          <div>Timed write <input type="number" id="timerMins" min="1" max="300"> min <button id="timerBtn">Start</button></div>
-        </div>
-      </details>
-    </span>
+    <div id="bar">
+      <button id="essaysBtn" class="btn quiet" title="Back to your essays">‹ Essays</button>
+      <span id="essayTitle"></span>
+      <span id="right">
+        <span id="status" hidden></span>
+        <button id="timer" class="btn" hidden title="Stop the timer"></button>
+        <button id="practiseBtn" class="btn primary" title="Work through the essay one paragraph at a time">Practise</button>
+        <details id="modes" class="menu">
+          <summary class="btn">Modes ▾</summary>
+          <div class="panel">
+            <button class="item" data-mode="blank">Blank page<small>Write it from memory, then check it</small></button>
+            <button class="item" data-mode="recite">Recite aloud<small>Words appear as you say them</small></button>
+            <button class="item" data-mode="listen">Listen with gaps<small>Read to you, pausing at hidden words</small></button>
+            <button class="item" data-mode="skeleton">Skeleton<small>Only the first words of each sentence</small></button>
+            <button class="item" data-mode="quotes">Quote drill<small>Hide just the quotes</small></button>
+            <button class="item" data-mode="adapt">Adapt to a question<small>Rework your thesis and topic sentences</small></button>
+          </div>
+        </details>
+        <details id="options" class="menu">
+          <summary class="btn">Options ▾</summary>
+          <div class="panel">
+            <div class="head">Show</div>
+            <label><input type="checkbox" data-opt="hints"> First letters on hidden words</label>
+            <label><input type="checkbox" data-opt="heat"> Weak spots in red</label>
+            <label><input type="checkbox" data-opt="count"> Hidden and missed counts</label>
+            <label><input type="checkbox" data-opt="lines"> Ruled lines</label>
+            <label><input type="checkbox" data-opt="help"> Help line</label>
+            <div class="head">Check</div>
+            <label><input type="checkbox" data-opt="typing"> Type each word to check it</label>
+            <div class="line">Hide <select id="eraseStep">
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="25">25</option>
+              <option value="33">33</option>
+              <option value="50">50</option>
+            </select> % each time</div>
+            <div class="head">Timed write</div>
+            <div class="line"><input type="number" id="timerMins" min="1" max="300"> min <button id="timerBtn" class="btn">Start</button></div>
+            <div class="head">Export</div>
+            <button class="item" id="ankiBtn">Quotes to Anki<small>A cloze card for every quote</small></button>
+          </div>
+        </details>
+      </span>
+    </div>
+    <div id="tools" class="ess">
+      <span class="seg" id="pens">
+        <button type="button" class="btn selected" data-pen="cover" title="Tap or drag to reveal and hide">Reveal</button>
+        <button type="button" class="btn" data-pen="hl" id="hlPen" title="Tap or drag to highlight"><i id="hlDot"></i><span id="hlLabel">Highlight</span></button>
+        <details class="menu left" id="hlMenu">
+          <summary class="btn" title="Highlighter colour">▾</summary>
+          <div class="panel">
+            <div id="swatches"></div>
+            <button class="item" data-pen="erase">Eraser<small>Rub highlights out</small></button>
+          </div>
+        </details>
+        <button type="button" class="btn" data-pen="miss" title="Mark words you got wrong (or right-click a word)"><span class="cross">✗</span> Missed</button>
+      </span>
+      <span class="seg">
+        <button id="showAllBtn" class="btn">Show all</button>
+        <button id="eraseBtn" class="btn" title="Hide more of the essay, starting with key words and the ones you get wrong">Hide 20%</button>
+        <button id="coverAllBtn" class="btn">Cover all</button>
+      </span>
+      <span class="seg">
+        <button id="undoBtn" class="btn" disabled title="Undo (Ctrl+Z)">↶</button>
+        <button id="redoBtn" class="btn" disabled title="Redo (Ctrl+Y)">↷</button>
+      </span>
+    </div>
   </div>
+
+  <div id="banner" class="note" hidden></div>
+  <div id="live" class="note" hidden></div>
   <div id="help">
-    Click a word to reveal or hide it · drag across text to do a whole stretch · double-click for its sentence · right-click or long-press marks it missed ·
-    Space next word · Enter next sentence · ←&nbsp;step back<span id="typingHelp"> · type the next word then Space to check it</span>
+    Tap a word to reveal or hide it · drag across text for a whole stretch · double-tap for its sentence · right-click or long-press marks it missed<span class="keys"> ·
+    Space next word · Enter next sentence · ←&nbsp;step back</span><span id="typingHelp"> · type the next word then Space to check it</span>
     · <button id="hideHelp" class="link">hide</button>
   </div>
+
   <div id="stage">
     <div id="textLayer"></div>
     <canvas id="cover"></canvas>
   </div>
+
+  <div id="blank" hidden>
+    <div class="top">
+      Write <select id="blankTarget"></select> from memory.
+      <span class="muted">Capitals and punctuation don't count.</span>
+    </div>
+    <textarea id="blankInput" spellcheck="false" autocomplete="off" autocorrect="off"></textarea>
+    <div class="go">
+      <button id="blankCheck" class="btn primary">Check</button>
+      <button id="blankCancel" class="btn">Cancel</button>
+      <span id="blankCount" class="muted"></span>
+    </div>
+  </div>
+
+  <div id="adapt" hidden>
+    <div class="muted">Rework the essay to answer</div>
+    <div id="adaptQ"></div>
+    <div class="muted">
+      <button id="adaptNext" class="link">Another question</button>
+      &nbsp; <button id="adaptEdit" class="link">Edit questions</button>
+    </div>
+    <div id="adaptEditor" hidden>
+      <textarea id="adaptList" placeholder="Paste past questions for this module, one per line"></textarea>
+      <button id="adaptSave" class="btn primary">Save questions</button>
+    </div>
+    <div id="adaptParts"></div>
+    <div class="go"><button id="adaptDone" class="btn">Back to the essay</button></div>
+  </div>
+
+  <div id="stepBar">
+    <button id="backStep" class="btn">← Back</button>
+    <input type="text" id="typeIn" placeholder="Type the next word" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" hidden>
+    <button id="wordStep" class="btn">Word</button>
+    <button id="sentStep" class="btn">Sentence</button>
+  </div>
+</div>
+
 </div>
 
 <script>
 const PALETTE = ['rgba(255,0,0,0.45)', 'rgba(0,120,255,0.45)', 'rgba(255,235,0,0.55)', 'rgba(0,190,0,0.45)', 'rgba(255,140,0,0.5)', 'rgba(155,0,200,0.45)'];
 const COLOUR_NAMES = ['Red', 'Blue', 'Yellow', 'Green', 'Orange', 'Purple'];
 const STORE_KEY = 'essay-eraser';
-const DEFAULT_OPTS = { hints: false, typing: false, count: false, lines: true, help: true, eraseStep: 20, timerMins: 40 };
+const DEFAULT_OPTS = { hints: false, typing: false, count: false, lines: true, help: true, heat: false, eraseStep: 20, timerMins: 40, colour: 2, rate: 1, sayAnswers: true };
 
 const setup = document.getElementById('setup');
 const work = document.getElementById('work');
@@ -293,6 +549,13 @@ const savedList = document.getElementById('saved');
 const newBtn = document.getElementById('newBtn');
 const editor = document.getElementById('editor');
 const essayInput = document.getElementById('essayInput');
+const detect = document.getElementById('detect');
+const secsBox = document.getElementById('secs');
+const naming = document.getElementById('naming');
+const pairNames = document.getElementById('pairNames');
+const textA = document.getElementById('textA');
+const textB = document.getElementById('textB');
+const secList = document.getElementById('secList');
 const startBtn = document.getElementById('startBtn');
 const cancelBtn = document.getElementById('cancelBtn');
 const exportBtn = document.getElementById('exportBtn');
@@ -300,8 +563,14 @@ const importBtn = document.getElementById('importBtn');
 const importFile = document.getElementById('importFile');
 const controls = document.getElementById('controls');
 const essaysBtn = document.getElementById('essaysBtn');
+const practiseBtn = document.getElementById('practiseBtn');
+const modes = document.getElementById('modes');
 const pens = document.getElementById('pens');
-const missPen = document.getElementById('missPen');
+const hlPen = document.getElementById('hlPen');
+const hlDot = document.getElementById('hlDot');
+const hlLabel = document.getElementById('hlLabel');
+const hlMenu = document.getElementById('hlMenu');
+const swatches = document.getElementById('swatches');
 const showAllBtn = document.getElementById('showAllBtn');
 const eraseBtn = document.getElementById('eraseBtn');
 const coverAllBtn = document.getElementById('coverAllBtn');
@@ -313,6 +582,9 @@ const options = document.getElementById('options');
 const eraseStep = document.getElementById('eraseStep');
 const timerMins = document.getElementById('timerMins');
 const timerBtn = document.getElementById('timerBtn');
+const ankiBtn = document.getElementById('ankiBtn');
+const banner = document.getElementById('banner');
+const live = document.getElementById('live');
 const help = document.getElementById('help');
 const typingHelp = document.getElementById('typingHelp');
 const hideHelp = document.getElementById('hideHelp');
@@ -320,8 +592,25 @@ const stage = document.getElementById('stage');
 const textLayer = document.getElementById('textLayer');
 const canvas = document.getElementById('cover');
 const ctx = canvas.getContext('2d');
+const blank = document.getElementById('blank');
+const blankTarget = document.getElementById('blankTarget');
+const blankInput = document.getElementById('blankInput');
+const blankCheck = document.getElementById('blankCheck');
+const blankCancel = document.getElementById('blankCancel');
+const blankCount = document.getElementById('blankCount');
+const adapt = document.getElementById('adapt');
+const adaptQ = document.getElementById('adaptQ');
+const adaptNext = document.getElementById('adaptNext');
+const adaptEdit = document.getElementById('adaptEdit');
+const adaptEditor = document.getElementById('adaptEditor');
+const adaptList = document.getElementById('adaptList');
+const adaptSave = document.getElementById('adaptSave');
+const adaptParts = document.getElementById('adaptParts');
+const adaptDone = document.getElementById('adaptDone');
+const typeIn = document.getElementById('typeIn');
 
-// Saved in localStorage: { essays: [{ id, title, text, covered, hl, missed, cursor, updated }], openId, opts, timerEnd }
+// Saved in localStorage: { essays: [{ id, num, title, text, titles, pair, covered, hl, missed, right, wrong,
+// ladder, draft, questions, cursor, updated }], openId, opts, timerEnd }
 let store = loadStore();
 const opts = store.opts = { ...DEFAULT_OPTS, ...store.opts };
 let essay = null;      // saved record currently open
@@ -329,24 +618,40 @@ let editingId = null;  // saved record being edited in the textarea (null = new 
 
 // The essay is modelled per word; the canvas is just a drawing of that state,
 // so it can be redrawn at any size (resize, rotate, zoom) without losing progress.
-let words = [];        // { el, s: sentence index, key: what typing is checked against, hint, boxes }
+let words = [];        // { el, tok, s: sentence index, p: paragraph index, q: quote index or -1, key: what typing is checked against, hint, boxes }
 let gaps = [];         // { el, prev, next: neighbouring word indices on the same line (-1 if none), boxes }
+let nodes = [];        // { el, p } everything in the text layer, so one paragraph can be shown on its own
+let paras = [];        // { lo, hi } word range of each paragraph
+let quotes = [];       // { lo, hi } word range of each quote
 let covered = [];      // per word
 let hl = [];           // per word: PALETTE index, -1 for none
 let missed = [];       // per word: marked as got wrong
+let right = [];        // per word: times recalled correctly
+let wrong = [];        // per word: times got wrong
 let cursor = -1;       // last word revealed; the next covered word after it is "next"
 let typed = '';        // letters typed towards the next word (type-to-check option)
 let stepping = false;  // show the next-word marker once the keyboard has been used
-let pen = 'cover';     // 'cover' | 'miss' | 'erase' | PALETTE index
+let pen = 'cover';     // 'cover' | 'hl' | 'miss' | 'erase'
 let undoStack = [];
 let redoStack = [];
 let act = null;        // the edit in progress (one undo step)
 let gesture = null;
 let lastTap = null;
+let dirty = false;     // something was practised since the last save
+let view = 'essay';    // 'essay' | 'blank' | 'adapt'
+let scope = null;      // { p, lo, hi } when only one paragraph is on screen
+let ladder = null;     // { p } while a Practise session is running
+let forceHints = false;
 
 // Layout, measured from the DOM
 let rows = [];         // rows[r] = [{ x0, x1, i }] hit boxes on text line r (i = -1 for gaps)
-let lineH = 24, W = 0, H = 0, dpr = 1, font = '', ascent = 0;
+let lineH = 24, W = 0, H = 0, dpr = 1, font = '', ascent = 0, INK = '#000', PAPER = '#fff';
+
+function el(tag, props, ...kids) {
+  const e = Object.assign(document.createElement(tag), props);
+  e.append(...kids);
+  return e;
+}
 
 /* ---------- storage ---------- */
 
@@ -374,8 +679,12 @@ function saveNow() {
     essay.covered = covered.map(c => c ? '1' : '0').join('');
     essay.hl = hl.map(c => c < 0 ? '-' : c).join('');
     essay.missed = missed.map(c => c ? '1' : '0').join('');
+    essay.right = right;
+    essay.wrong = wrong;
     essay.cursor = cursor;
-    essay.updated = Date.now();
+    // only real practice counts as "practised", not just opening the essay
+    if (dirty) essay.updated = Date.now();
+    dirty = false;
   }
   saveStore();
 }
@@ -385,6 +694,120 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) saveN
 
 function newId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ---------- comparing two word lists ---------- */
+
+// Longest common subsequence of a and b as [i, j] pairs, in order
+function lcsPairs(a, b, eq) {
+  const head = [], tail = [], mid = [];
+  let s = 0, ea = a.length, eb = b.length;
+  while (s < ea && s < eb && eq(a[s], b[s])) { head.push([s, s]); s++; }
+  while (ea > s && eb > s && eq(a[ea - 1], b[eb - 1])) { ea--; eb--; tail.push([ea, eb]); }
+  const n = ea - s, m = eb - s, w = m + 1;
+  if (n && m && n * m <= 6e6) {
+    const L = new Uint16Array((n + 1) * w);
+    for (let i = 1; i <= n; i++) for (let j = 1; j <= m; j++) {
+      L[i * w + j] = eq(a[s + i - 1], b[s + j - 1]) ? L[(i - 1) * w + j - 1] + 1 : Math.max(L[(i - 1) * w + j], L[i * w + j - 1]);
+    }
+    let i = n, j = m;
+    while (i && j) {
+      if (eq(a[s + i - 1], b[s + j - 1])) { mid.push([s + i - 1, s + j - 1]); i--; j--; }
+      else if (L[(i - 1) * w + j] >= L[i * w + j - 1]) i--;
+      else j--;
+    }
+  }
+  return head.concat(mid.reverse(), tail.reverse());
+}
+
+function editDistance(a, b) {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[b.length];
+}
+
+// Same word, forgiving one typo in a longer word
+function sameWord(g, key) {
+  if (g === key) return true;
+  return key.length >= 5 && Math.abs(g.length - key.length) <= 1 && editDistance(g, key) <= 1;
+}
+
+/* ---------- finding the paragraphs in pasted text ---------- */
+
+const wc = s => s.split(/\s+/).filter(Boolean).length;
+const ENDS = /[.!?…][)"'”’\]]*$/;
+
+// A short line of its own with no sentence punctuation, e.g. "Tempest BP1" or "Introduction:"
+function isHeading(line) {
+  return wc(line) <= 8 && line.length <= 60 && /^[\p{Lu}\p{N}]/u.test(line) && !/[.!?,;…][)"'”’\]]*$/.test(line);
+}
+
+// blankSplits: paragraphs are separated by blank lines, so a single line break is a stray one.
+// Otherwise every line break might be a new paragraph, and it's judged by how the lines read.
+function sectionise(lines, blankSplits) {
+  const secs = [];
+  let last = null, cur = null, title = null;
+  lines.forEach((line, k) => {
+    if (!line) { if (blankSplits) cur = null; return; }
+    const next = lines.slice(k + 1).find(Boolean);
+    if (isHeading(line) && next && wc(next) > 8) {
+      title = line.replace(/\s*:$/, '');
+      cur = null;
+      return;
+    }
+    let target = null;
+    if (last && title === null) {
+      if (cur && blankSplits) target = cur;
+      else if (!ENDS.test(last.text) || /^\p{Ll}/u.test(line)) target = last;  // mid-sentence
+      else if (!blankSplits && wc(line) < 25 && ENDS.test(line)) target = last;  // a short tail, not a new paragraph
+    }
+    if (target) target.text += ' ' + line;
+    else {
+      last = { title, text: line };
+      secs.push(last);
+      title = null;
+    }
+    cur = last;
+  });
+  // a leftover scrap with no heading of its own belongs to its neighbour
+  for (let i = secs.length - 1; i >= 0 && secs.length > 1; i--) {
+    const s = secs[i];
+    if (s.title !== null || wc(s.text) >= 25) continue;
+    if (i > 0) secs[i - 1].text += ' ' + s.text;
+    else secs[1].text = s.text + ' ' + secs[1].text;
+    secs.splice(i, 1);
+  }
+  return secs;
+}
+
+function detectSections(text) {
+  const lines = text.replace(/\r/g, '').split('\n').map(l => l.trim());
+  const a = sectionise(lines, true), b = sectionise(lines, false);
+  return a.length < 3 && b.length > a.length ? b : a;
+}
+
+// pair: [first text, second text] when the body paragraphs alternate between two texts
+function defaultTitles(n, pair) {
+  return Array.from({ length: n }, (_, i) => {
+    if (n >= 2 && i === 0) return 'Introduction';
+    if (n >= 3 && i === n - 1) return 'Conclusion';
+    const j = n >= 2 ? i - 1 : i;
+    return pair ? pair[j % 2] + ' BP' + (Math.floor(j / 2) + 1) : 'Body ' + (j + 1);
+  });
 }
 
 /* ---------- essays screen ---------- */
@@ -410,7 +833,6 @@ function daysAgo(t) {
 function showSetup() {
   work.hidden = true;
   setup.hidden = false;
-  essayTitle.textContent = '';
   renderSaved();
   if (store.essays.length) closeEditor();
   else openEditor(null);
@@ -419,35 +841,33 @@ function showSetup() {
 function renderSaved() {
   savedList.textContent = '';
   exportBtn.hidden = !store.essays.length;
-  if (!store.essays.length) return;
   store.essays.slice().sort((a, b) => a.num - b.num).forEach(rec => {
-    const row = document.createElement('div');
-    row.className = 'row';
-    const open = document.createElement('button');
-    open.className = 'link open';
-    open.textContent = titleOf(rec);
-    open.title = rec.text.trim().split('\n')[0];
+    const open = el('button', { className: 'link open', textContent: titleOf(rec), title: rec.text.trim().split('\n')[0] });
     open.addEventListener('click', () => openEssay(rec, false));
 
     const misses = (rec.missed || '').split('1').length - 1;
-    const meta = document.createElement('span');
-    meta.className = 'muted meta';
-    meta.textContent = [
-      rec.text.split(/\s+/).filter(Boolean).length + ' words',
+    const meta = el('span', { className: 'muted meta' });
+    if (Array.isArray(rec.ladder)) {
+      const dots = el('span', { className: 'dots', title: rec.ladder.filter(s => s >= MASTERED).length + ' of ' + rec.ladder.length + ' paragraphs mastered' });
+      rec.ladder.forEach(s => dots.append(el('i', { className: s >= MASTERED ? 'done' : s ? 'going' : '' })));
+      meta.append(dots, ' ');
+    }
+    meta.append([
+      wc(rec.text) + ' words',
       misses ? misses + ' missed' : '',
       rec.updated ? 'practised ' + daysAgo(rec.updated) : ''
-    ].filter(Boolean).join(' · ');
+    ].filter(Boolean).join(' · '));
 
-    const actions = document.createElement('span');
-    actions.className = 'muted actions';
-    const action = (label, fn) => {
-      const b = document.createElement('button');
-      b.className = 'link';
-      b.textContent = label;
+    const practise = el('button', { className: 'btn primary', textContent: 'Practise' });
+    practise.addEventListener('click', () => openEssay(rec, false, true));
+
+    const panel = el('div', { className: 'panel' });
+    const action = (label, fn, cls = '') => {
+      const b = el('button', { className: 'item ' + cls, textContent: label });
       b.addEventListener('click', fn);
-      actions.appendChild(b);
+      panel.append(b);
     };
-    action('Edit', () => openEditor(rec));
+    action('Edit text and headings', () => openEditor(rec));
     action('Rename', () => {
       const name = prompt('Name this essay', titleOf(rec));
       if (name === null) return;
@@ -460,18 +880,71 @@ function renderSaved() {
       store.essays = store.essays.filter(e => e !== rec);
       saveStore();
       showSetup();
-    });
-    row.append(open, meta, actions);
-    savedList.appendChild(row);
+    }, 'danger');
+    const more = el('details', { className: 'menu' }, el('summary', { className: 'btn', textContent: '···', title: 'More' }), panel);
+
+    savedList.append(el('div', { className: 'row' }, open, meta, practise, more));
   });
 }
+
+// Headings typed by hand in the editor, by paragraph; dropped when the paragraphs change
+let secEdits = {};
+let secCount = 0;
+
+function pairOf() {
+  return naming.value === 'pair' ? [textA.value.trim() || 'Text 1', textB.value.trim() || 'Text 2'] : null;
+}
+
+function currentSections() {
+  if (!detect.checked) return null;
+  const secs = detectSections(essayInput.value);
+  if (secs.length !== secCount) { secEdits = {}; secCount = secs.length; }
+  const names = defaultTitles(secs.length, pairOf());
+  secs.forEach((s, i) => { s.title = secEdits[i] ?? s.title ?? names[i]; });
+  return secs;
+}
+
+function renderSecs() {
+  const secs = currentSections();
+  secsBox.hidden = !secs || !secs.length;
+  pairNames.hidden = naming.value !== 'pair';
+  secList.textContent = '';
+  if (!secs) return;
+  secs.forEach((s, i) => {
+    const input = el('input', { type: 'text', value: s.title, title: 'Heading for this paragraph' });
+    input.addEventListener('input', () => { secEdits[i] = input.value; });
+    secList.append(el('div', { className: 'sec' }, input,
+      el('span', { className: 'muted', textContent: wc(s.text) + ' words · ' + s.text.split(/\s+/).slice(0, 12).join(' ') + ' ...' })));
+  });
+}
+
+let secTimer = 0;
+essayInput.addEventListener('input', () => {
+  clearTimeout(secTimer);
+  secTimer = setTimeout(renderSecs, 250);
+});
+detect.addEventListener('change', renderSecs);
+// a new naming pattern replaces hand-typed headings
+[naming, textA, textB].forEach(c => c.addEventListener(c === naming ? 'change' : 'input', () => { secEdits = {}; renderSecs(); }));
 
 function openEditor(rec) {
   editingId = rec ? rec.id : null;
   essayInput.value = rec ? rec.text : '';
+  detect.checked = rec ? !!rec.titles : true;
+  naming.value = rec && rec.pair ? 'pair' : 'single';
+  textA.value = rec && rec.pair ? rec.pair[0] : '';
+  textB.value = rec && rec.pair ? rec.pair[1] : '';
+  secEdits = {};
+  secCount = 0;
+  if (rec && rec.titles) {
+    secCount = detectSections(rec.text).length;
+    if (secCount === rec.titles.length) secEdits = { ...rec.titles };
+  }
   editor.hidden = false;
   newBtn.hidden = true;
   cancelBtn.hidden = !store.essays.length;
+  startBtn.textContent = rec ? 'Save and cover' : 'Cover essay';
+  renderSecs();
   essayInput.focus();
 }
 
@@ -484,9 +957,31 @@ function closeEditor() {
 newBtn.addEventListener('click', () => openEditor(null));
 cancelBtn.addEventListener('click', closeEditor);
 
+// The words changed: keep highlights, misses and history on every word that survived the edit
+function carryOver(rec, text) {
+  const a = rec.text.split(/\s+/).filter(Boolean), b = text.split(/\s+/).filter(Boolean);
+  const pairs = lcsPairs(a, b, (x, y) => x === y);
+  const move = (old, fill) => {
+    if (!old || old.length !== a.length) return undefined;
+    const out = new Array(b.length).fill(fill);
+    pairs.forEach(([i, j]) => { out[j] = old[i]; });
+    return out;
+  };
+  const str = (old, fill) => { const out = move(old && Array.from(old), fill); return out && out.join(''); };
+  rec.hl = str(rec.hl, '-');
+  rec.missed = str(rec.missed, '0');
+  rec.right = move(rec.right, 0);
+  rec.wrong = move(rec.wrong, 0);
+  delete rec.covered;
+  delete rec.draft;
+}
+
 startBtn.addEventListener('click', () => {
-  const text = essayInput.value;
-  if (!text.trim()) return;
+  if (!essayInput.value.trim()) return;
+  clearTimeout(secTimer);
+  const secs = currentSections();
+  // each detected paragraph is stored as one line, so stray line breaks are gone for good
+  const text = secs ? secs.map(s => s.text).join('\n\n') : essayInput.value;
   let rec = editingId ? store.essays.find(e => e.id === editingId) : store.essays.find(e => e.text === text);
   if (!rec) {
     rec = { id: newId() };
@@ -494,23 +989,18 @@ startBtn.addEventListener('click', () => {
     numberEssays();
   }
   if (rec.text !== text) {
-    // the words changed, so per-word highlights and misses no longer line up
+    if (rec.text) carryOver(rec, text);
     rec.text = text;
-    delete rec.hl;
-    delete rec.missed;
   }
+  rec.titles = secs ? secs.map((s, i) => s.title.trim() || 'Paragraph ' + (i + 1)) : undefined;
+  rec.pair = secs && pairOf() || undefined;
   closeEditor();
   openEssay(rec, true);
 });
 
 exportBtn.addEventListener('click', () => {
   saveNow();
-  const blob = new Blob([JSON.stringify({ app: 'essay-eraser', essays: store.essays })], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'essays-' + new Date().toISOString().slice(0, 10) + '.json';
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  download('essays-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify({ app: 'essay-eraser', essays: store.essays }), 'application/json');
 });
 
 importBtn.addEventListener('click', () => importFile.click());
@@ -526,7 +1016,7 @@ importFile.addEventListener('change', async () => {
     list = Array.isArray(data) ? data : data.essays;
     if (!Array.isArray(list)) throw new Error();
   } catch (e) {
-    alert("That file isn't an Essay Eraser backup.");
+    alert("That file isn't an EasyEssay backup.");
     return;
   }
   let added = 0, updated = 0;
@@ -550,16 +1040,18 @@ importFile.addEventListener('change', async () => {
 });
 
 // fresh: start fully covered (highlights and misses are kept)
-function openEssay(rec, fresh) {
+function openEssay(rec, fresh, practise) {
   essay = rec;
   setup.hidden = true;
   work.hidden = false;
-  essayTitle.textContent = ' · ' + titleOf(rec);
+  essayTitle.textContent = titleOf(rec);
   buildTokens(rec.text);
   const n = words.length;
   const load = (str, parse, fill) => str && str.length === n ? Array.from(str, parse) : new Array(n).fill(fill);
   hl = load(rec.hl, c => c === '-' ? -1 : +c, -1);
   missed = load(rec.missed, c => c === '1', false);
+  right = load(rec.right, c => c || 0, 0);
+  wrong = load(rec.wrong, c => c || 0, 0);
   if (!fresh && rec.covered && rec.covered.length === n) {
     covered = Array.from(rec.covered, c => c === '1');
     cursor = rec.cursor ?? -1;
@@ -571,35 +1063,87 @@ function openEssay(rec, fresh) {
   redoStack = [];
   typed = '';
   lastTap = null;
+  scope = null;
+  ladder = null;
+  forceHints = false;
+  banner.hidden = true;
+  live.hidden = true;
   store.openId = rec.id;
   window.scrollTo(0, 0);
-  measure();
+  setView('essay');
   // Coming back to an essay part-way through: pick up where you were
   stepping = cursor >= 0 && nextCovered() >= 0;
   if (stepping) scrollToWord(nextCovered());
   commit();
+  if (practise) startPractise();
 }
 
 essaysBtn.addEventListener('click', () => {
+  stopLive();
   saveNow();
   essay = null;
   store.openId = null;
   saveStore();
-  options.open = false;
+  closeMenus();
   showSetup();
 });
+
+// Which part of the work screen is showing: the essay, the blank page or the adapt drill
+function setView(v) {
+  view = v;
+  work.dataset.view = v;
+  stage.hidden = v !== 'essay';
+  blank.hidden = v !== 'blank';
+  adapt.hidden = v !== 'adapt';
+  help.hidden = !opts.help || v !== 'essay';
+  if (v === 'essay' && words.length) { measure(); draw(); }
+}
+
+function paraName(p) {
+  return essay.titles && essay.titles[p] || 'Paragraph ' + (p + 1);
+}
+
+// Show one paragraph on its own (null = the whole essay)
+function setScope(p) {
+  scope = p == null ? null : { p, lo: paras[p].lo, hi: paras[p].hi };
+  nodes.forEach(n => { n.el.hidden = !!scope && n.p !== p; });
+  if (scope && (cursor < scope.lo - 1 || cursor > scope.hi)) cursor = scope.lo - 1;
+  if (view === 'essay') { measure(); draw(); }
+}
+
+// The words the tools act on
+function range() {
+  return scope ? [scope.lo, scope.hi] : [0, words.length - 1];
+}
+
+// A message strip: some text, then buttons as [label, action, 'primary' | 'link' | undefined]
+function fillBar(bar, text, buttons = [], extra) {
+  bar.textContent = '';
+  bar.append(el('span', { textContent: text }));
+  buttons.forEach(([label, fn, kind]) => {
+    const b = el('button', { className: kind === 'link' ? 'link' : 'btn ' + (kind || ''), textContent: label });
+    b.addEventListener('click', fn);
+    bar.append(b);
+  });
+  if (extra) bar.append(extra);
+  bar.hidden = false;
+}
 
 /* ---------- options ---------- */
 
 function applyOpts() {
-  help.hidden = !opts.help;
+  help.hidden = !opts.help || view !== 'essay';
   typingHelp.hidden = !opts.typing;
+  typeIn.hidden = !opts.typing;
   statusEl.hidden = !opts.count;
-  eraseBtn.textContent = 'Erase ' + opts.eraseStep + '%';
+  eraseBtn.textContent = 'Hide ' + opts.eraseStep + '%';
   if (!opts.typing) typed = '';
   document.querySelectorAll('[data-opt]').forEach(c => { c.checked = !!opts[c.dataset.opt]; });
   eraseStep.value = opts.eraseStep;
   timerMins.value = opts.timerMins;
+  const c = PALETTE[opts.colour] || PALETTE[0];
+  hlDot.style.background = `linear-gradient(${c}, ${c}), #fff`;  // the colour as it looks on the page
+  swatches.querySelectorAll('button').forEach((b, i) => b.classList.toggle('selected', i === opts.colour));
 }
 
 function setOpt(key, value) {
@@ -616,9 +1160,13 @@ eraseStep.addEventListener('change', () => setOpt('eraseStep', +eraseStep.value)
 timerMins.addEventListener('change', () => setOpt('timerMins', Math.min(300, Math.max(1, Math.round(+timerMins.value) || 40))));
 hideHelp.addEventListener('click', () => setOpt('help', false));
 
-// Close the options menu when clicking anywhere else
+function closeMenus(except) {
+  document.querySelectorAll('details.menu[open]').forEach(m => { if (m !== except) m.open = false; });
+}
+
+// Close a menu when clicking anywhere else
 document.addEventListener('pointerdown', (e) => {
-  if (options.open && !options.contains(e.target)) options.open = false;
+  closeMenus(e.target.closest && e.target.closest('details.menu'));
 });
 
 // Once the menu closes, don't leave a checkbox in it focused (Space would toggle it instead of stepping)
@@ -660,6 +1208,10 @@ const ABBREVIATIONS = new Set([
   'mr', 'mrs', 'ms', 'dr', 'jr', 'sr', 'st', 'vs', 'etc', 'cf', 'no', 'p', 'pp', 'ch', 'vol', 'fig', 'ed', 'eds', 'approx',
   'bzw', 'usw', 'ca', 'vgl', 'nr', 'evtl', 'ggf', 'bspw', 'sog'
 ]);
+// Little words that carry no meaning on their own: last to be hidden
+const STOP = new Set(('a an the and or but of to in on at by for with from as is are was were be been being it its this that these those ' +
+  'he she they we you i his her their our your not no so than then there which who whom whose what when where how if into through ' +
+  'over under also both each such can could will would shall should may might must do does did has have had').split(' '));
 
 // Does `word` end a sentence, given the word after it on the same line?
 function endsSentence(word, next) {
@@ -679,32 +1231,66 @@ function buildTokens(text) {
   textLayer.textContent = '';
   words = [];
   gaps = [];
+  nodes = [];
+  paras = [];
   let s = 0;
   const lines = text.split('\n');
   lines.forEach((line, li) => {
     const toks = line.trim() ? line.split(/(\s+)/).filter(Boolean) : [];
     const lineWords = toks.filter(t => !/^\s/.test(t));
+    const p = lineWords.length ? paras.length : -1;
+    if (p >= 0) {
+      paras.push({ lo: words.length, hi: words.length + lineWords.length - 1 });
+      if (essay.titles && essay.titles[p]) {
+        const head = el('div', { className: 'ptitle', textContent: essay.titles[p] });
+        nodes.push({ el: head, p });
+        textLayer.appendChild(head);
+      }
+    }
     let w = 0, gap = null;
     toks.forEach(tok => {
-      const el = document.createElement('span');
-      el.textContent = tok;
+      const span = document.createElement('span');
+      span.textContent = tok;
       if (/^\s/.test(tok)) {
-        el.className = 'gap';
-        gap = { el, prev: w > 0 ? words.length - 1 : -1, next: -1 };
+        span.className = 'gap';
+        gap = { el: span, prev: w > 0 ? words.length - 1 : -1, next: -1 };
         gaps.push(gap);
       } else {
-        el.className = 'word';
+        span.className = 'word';
         if (gap) gap.next = words.length;
         gap = null;
-        words.push({ el, s, key: normalise(tok), hint: tok.match(HINT_RE)[0] });
+        words.push({ el: span, tok, s, p, q: -1, key: normalise(tok), hint: tok.match(HINT_RE)[0] });
         if (endsSentence(tok, lineWords[w + 1])) s++;
         w++;
       }
-      textLayer.appendChild(el);
+      nodes.push({ el: span, p });
+      textLayer.appendChild(span);
     });
     if (lineWords.length) s++;
-    if (li < lines.length - 1) textLayer.appendChild(document.createElement('br'));
+    if (li < lines.length - 1) {
+      const br = document.createElement('br');
+      nodes.push({ el: br, p: -1 });
+      textLayer.appendChild(br);
+    }
   });
+  findQuotes();
+}
+
+// Anything inside quotation marks, within one paragraph
+function findQuotes() {
+  quotes = [];
+  for (let i = 0; i < words.length; i++) {
+    const m = words[i].tok.match(/^[(\[]*(["“‘'])/);
+    if (!m) continue;
+    const close = m[1] === '‘' || m[1] === "'" ? /[’'][.,;:!?)\]—–-]*$/ : /["”][.,;:!?)\]—–-]*$/;
+    for (let j = i; j < words.length && j < i + 40 && words[j].p === words[i].p; j++) {
+      if (!close.test(j === i ? words[j].tok.slice(m[0].length) : words[j].tok)) continue;
+      for (let k = i; k <= j; k++) words[k].q = quotes.length;
+      quotes.push({ lo: i, hi: j });
+      i = j;
+      break;
+    }
+  }
 }
 
 /* ---------- measuring and drawing ---------- */
@@ -714,6 +1300,9 @@ function buildTokens(text) {
 function measure() {
   const origin = textLayer.getBoundingClientRect();
   const cs = getComputedStyle(textLayer);
+  const ss = getComputedStyle(stage);
+  INK = ss.color;
+  PAPER = ss.backgroundColor;
   lineH = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.5;
   W = origin.width;
   H = origin.height;
@@ -747,14 +1336,17 @@ function screenDpr() {
   return Math.min(window.devicePixelRatio || 1, 32000 / Math.max(H, 1));
 }
 
-new ResizeObserver(() => {
-  if (!work.hidden && words.length) { measure(); render(); }
-}).observe(textLayer);
+function remeasure() {
+  if (!work.hidden && view === 'essay' && words.length) { measure(); render(); }
+}
+
+new ResizeObserver(remeasure).observe(textLayer);
 
 // Dragging the window to a screen with different scaling changes the pixel ratio but not the layout
-window.addEventListener('resize', () => {
-  if (!work.hidden && words.length && screenDpr() !== dpr) { measure(); render(); }
-});
+window.addEventListener('resize', () => { if (screenDpr() !== dpr) remeasure(); });
+
+// Light and dark mode draw the cover in different colours
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', remeasure);
 
 function fillBox(b, w = b.w) {
   const x0 = Math.floor(b.x * dpr), x1 = Math.ceil((b.x + w) * dpr);
@@ -771,13 +1363,13 @@ function gapCovered(g) {
 
 function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#000';
+  ctx.fillStyle = INK;
   words.forEach((wd, i) => { if (covered[i]) wd.boxes.forEach(b => fillBox(b)); });
   gaps.forEach(g => { if (gapCovered(g)) g.boxes.forEach(b => fillBox(b)); });
 
   ctx.font = font;
   ctx.textBaseline = 'alphabetic';
-  if (opts.hints) {
+  if (opts.hints || forceHints) {
     ctx.fillStyle = '#8c8c8c';
     words.forEach((wd, i) => {
       const b = wd.boxes[0];
@@ -787,19 +1379,21 @@ function render() {
 
   // Ruled lines sit on top of the cover, so they can never be covered
   if (opts.lines) {
-    ctx.fillStyle = 'rgba(90,90,150,0.55)';
+    ctx.fillStyle = 'rgba(110,110,170,0.5)';
     const t = Math.max(1, Math.round(dpr));
     for (let y = lineH; y < H + 0.5; y += lineH) ctx.fillRect(0, Math.round(y * dpr), canvas.width, t);
   }
 
-  const n = stepping || typed ? nextCovered() : -1;
+  // the marker: where the reader is, or the next word to recall
+  const seg = talk && talk.segs[talk.k];
+  const n = talk ? (seg ? seg.a : -1) : stepping || typed ? nextCovered() : -1;
   const b = n >= 0 && words[n].boxes[0];
   if (b) {
     // what you've typed so far, written into the blank it's answering
     if (typed) {
-      ctx.fillStyle = '#000';
+      ctx.fillStyle = INK;
       fillBox(b, Math.max(b.w, ctx.measureText(typed).width / dpr + 4));
-      ctx.fillStyle = '#fff';
+      ctx.fillStyle = PAPER;
       ctx.fillText(typed, (b.x + 1) * dpr, b.base * dpr);
     }
     ctx.fillStyle = '#2f7cff';
@@ -807,17 +1401,25 @@ function render() {
   }
 }
 
+// How shaky a word is, 0 to 1, from every time it has been checked
+function weakness(i) {
+  const t = right[i] + wrong[i];
+  const w = t ? wrong[i] / t : 0;
+  return missed[i] ? Math.max(0.6, w) : w;
+}
+
 function paintWords() {
   const setBg = (t, c) => { if (t.bg !== c) { t.bg = c; t.el.style.backgroundColor = c; } };
   words.forEach((wd, i) => {
-    setBg(wd, hl[i] >= 0 ? PALETTE[hl[i]] : '');
+    const heat = opts.heat ? weakness(i) : 0;
+    setBg(wd, heat ? `rgba(255,40,40,${(0.12 + 0.5 * heat).toFixed(2)})` : hl[i] >= 0 ? PALETTE[hl[i]] : '');
     if (wd.miss !== missed[i]) {
       wd.miss = missed[i];
       wd.el.classList.toggle('missed', missed[i]);
     }
   });
   gaps.forEach(g => {
-    const c = g.prev >= 0 && g.next >= 0 && hl[g.prev] >= 0 && hl[g.prev] === hl[g.next] ? PALETTE[hl[g.prev]] : '';
+    const c = !opts.heat && g.prev >= 0 && g.next >= 0 && hl[g.prev] >= 0 && hl[g.prev] === hl[g.next] ? PALETTE[hl[g.prev]] : '';
     setBg(g, c);
   });
   if (opts.count) {
@@ -876,6 +1478,7 @@ function beginAction(pushUndo = true) {
 // Revealing moves the cursor to the furthest word revealed; hiding moves it
 // back to just before the first word hidden, so the next word picks up from there.
 function endAction(newCursor) {
+  if (act.changed) dirty = true;
   if (act.pushed && !act.changed) {
     undoStack.pop();
     redoStack = act.redo;
@@ -921,7 +1524,7 @@ function penTarget(i) {
   if (pen === 'cover') return !covered[i];
   if (pen === 'miss') return !missed[i];
   if (pen === 'erase') return -1;
-  return hl[i] === pen ? -1 : pen;
+  return hl[i] === opts.colour ? -1 : opts.colour;
 }
 
 function penApply(i, target) {
@@ -956,54 +1559,71 @@ function sentenceOf(i) {
   return out;
 }
 
-showAllBtn.addEventListener('click', () => {
+function setRange(v) {
+  const [lo, hi] = range();
   beginAction();
-  words.forEach((_, i) => setCovered(i, false));
-  endAction(words.length - 1);
-});
+  for (let i = lo; i <= hi; i++) setCovered(i, v);
+  endAction(v ? lo - 1 : hi);
+}
 
-coverAllBtn.addEventListener('click', () => {
-  beginAction();
-  words.forEach((_, i) => setCovered(i, true));
-  endAction(-1);
-});
+showAllBtn.addEventListener('click', () => setRange(false));
+coverAllBtn.addEventListener('click', () => setRange(true));
 
-// Progressive erasing: each press hides another slice of the essay,
-// starting with the words you've missed
+// How much a word deserves to be hidden: key words, quotes and above all the ones you get wrong
+function weight(i) {
+  const k = words[i].key;
+  let w = STOP.has(k) ? 0.25 : k.length >= 7 ? 1.5 : 1;
+  if (words[i].q >= 0) w *= 1.5;
+  return w * (1 + 5 * weakness(i));
+}
+
+// k of these words at random, the heavier ones more likely
+function pickWeighted(ids, k) {
+  return ids.map(i => [Math.pow(Math.random(), 1 / weight(i)), i]).sort((a, b) => b[0] - a[0]).slice(0, k).map(x => x[1]);
+}
+
+function keyed(lo, hi, test = () => true) {
+  const out = [];
+  for (let i = lo; i <= hi; i++) if (words[i].key && test(i)) out.push(i);
+  return out;
+}
+
+// Progressive hiding: each press hides another slice of what's still showing
 eraseBtn.addEventListener('click', () => {
-  const visible = [];
-  covered.forEach((c, i) => { if (!c) visible.push(i); });
-  for (let i = visible.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [visible[i], visible[j]] = [visible[j], visible[i]];
-  }
-  visible.sort((a, b) => missed[b] - missed[a]);
+  const [lo, hi] = range();
+  const k = Math.ceil(keyed(lo, hi).length * opts.eraseStep / 100);
   beginAction();
-  visible.slice(0, Math.ceil(words.length * opts.eraseStep / 100)).forEach(i => setCovered(i, true));
-  endAction(-1);
+  pickWeighted(keyed(lo, hi, i => !covered[i]), k).forEach(i => setCovered(i, true));
+  endAction(lo - 1);
 });
 
 /* ---------- pens ---------- */
 
 PALETTE.forEach((c, i) => {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.className = 'swatch';
-  b.dataset.pen = i;
-  b.title = COLOUR_NAMES[i] + ' highlighter';
-  b.style.background = `linear-gradient(${c}, ${c}), #fff`;  // the colour as it looks on the page
-  pens.insertBefore(b, missPen);
+  const b = el('button', { type: 'button', title: COLOUR_NAMES[i] });
+  b.style.background = `linear-gradient(${c}, ${c}), #fff`;
+  b.addEventListener('click', () => {
+    setOpt('colour', i);
+    selectPen('hl');
+    hlMenu.open = false;
+  });
+  swatches.appendChild(b);
 });
 
 pens.addEventListener('click', (e) => {
   const b = e.target.closest('[data-pen]');
-  if (b) selectPen(b.dataset.pen);
+  if (!b) return;
+  // the highlighter button doubles as the eraser while the eraser is out
+  selectPen(b.dataset.pen);
+  hlMenu.open = false;
 });
 
 function selectPen(p) {
-  pen = isNaN(p) ? p : +p;
+  pen = p;
   lastTap = null;
-  pens.querySelectorAll('[data-pen]').forEach(b => b.classList.toggle('selected', b.dataset.pen === String(pen)));
+  pens.querySelectorAll('.btn[data-pen]').forEach(b => b.classList.toggle('selected', b.dataset.pen === pen || (b === hlPen && pen === 'erase')));
+  hlLabel.textContent = pen === 'erase' ? 'Eraser' : 'Highlight';
+  hlDot.hidden = pen === 'erase';
 }
 
 /* ---------- pointer: tap, double-tap, sweep, mark missed ---------- */
@@ -1031,16 +1651,17 @@ function wordAt(x, y) {
 // and above or below the essay means its first or last word.
 function wordNear(x, y) {
   const origin = textLayer.getBoundingClientRect();
+  const [lo, hi] = range();
   const r = Math.floor((y - origin.top) / lineH);
-  if (r < 0) return 0;
-  if (r >= rows.length) return words.length - 1;
+  if (r < 0) return lo;
+  if (r >= rows.length) return hi;
   const hit = nearestInRow(r, x - origin.left);
   if (hit.i >= 0) return hit.i;
   for (let up = r - 1; up >= 0; up--) {
     const ids = (rows[up] || []).filter(b => b.i >= 0).map(b => b.i);
     if (ids.length) return Math.max(...ids);
   }
-  return 0;
+  return lo;
 }
 
 function tap(x, y) {
@@ -1066,6 +1687,7 @@ function tap(x, y) {
 function toggleMissedAt(x, y) {
   const i = wordAt(x, y);
   if (i < 0) return;
+  if (!missed[i]) wrong[i]++;
   beginAction();
   setMissed(i, !missed[i]);
   endAction();
@@ -1103,10 +1725,17 @@ function endGesture(g, keep) {
   if (g.sweeping) keep ? endAction() : cancelAction();
 }
 
+function clearTyped() {
+  if (!typed && !typeIn.value) return;
+  typed = '';
+  typeIn.value = '';
+  draw();
+}
+
 stage.addEventListener('pointerdown', (e) => {
   // A press that never got its pointerup (released outside the window) mustn't lock the essay
   if (gesture) endGesture(gesture, true);
-  if (typed) { typed = ''; draw(); }
+  clearTyped();
   if (e.button === 2) {
     toggleMissedAt(e.clientX, e.clientY);
     return;
@@ -1165,8 +1794,9 @@ stage.addEventListener('contextmenu', e => e.preventDefault());
 // The next covered word to recall. Punctuation-only tokens ("/", "–") are
 // never the target; they're revealed along with the word beside them.
 function nextCovered() {
-  for (let i = cursor + 1; i < words.length; i++) if (covered[i] && words[i].key) return i;
-  for (let i = 0; i <= cursor && i < words.length; i++) if (covered[i] && words[i].key) return i;
+  const [lo, hi] = range();
+  for (let i = Math.max(cursor + 1, lo); i <= hi; i++) if (covered[i] && words[i].key) return i;
+  for (let i = lo; i <= cursor && i <= hi; i++) if (covered[i] && words[i].key) return i;
   return -1;
 }
 
@@ -1176,32 +1806,17 @@ function revealWord(n) {
   for (let j = n + 1; j < words.length && covered[j] && !words[j].key; j++) setCovered(j, false);
 }
 
-function isMatch(guess, key) {
-  const g = normalise(guess);
-  if (g === key) return true;
-  return key.length >= 5 && editDistance(g, key) <= 1;  // forgive a typo in a longer word
-}
-
-function editDistance(a, b) {
-  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
-  for (let i = 1; i <= a.length; i++) {
-    const cur = [i];
-    for (let j = 1; j <= b.length; j++) {
-      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-    }
-    prev = cur;
-  }
-  return prev[b.length];
-}
-
 // Type to check: reveal the word either way; a wrong answer marks it missed,
 // a right one clears an earlier miss
 function checkTyped() {
   const guess = typed;
   typed = '';
+  typeIn.value = '';
   const n = nextCovered();
   if (n < 0) return draw();
-  const ok = isMatch(guess, words[n].key);
+  const ok = sameWord(normalise(guess), words[n].key);
+  ok ? right[n]++ : wrong[n]++;
+  dirty = true;
   beginAction();
   revealWord(n);
   setMissed(n, !ok);
@@ -1229,9 +1844,10 @@ function stepSentence() {
 }
 
 function stepBack() {
-  let i = Math.min(cursor, words.length - 1);
-  while (i >= 0 && (covered[i] || !words[i].key)) i--;
-  if (i < 0) return;
+  const [lo, hi] = range();
+  let i = Math.min(cursor, hi);
+  while (i >= lo && (covered[i] || !words[i].key)) i--;
+  if (i < lo) return;
   beginAction();
   setCovered(i, true);
   endAction();
@@ -1256,17 +1872,18 @@ function scrollToWord(i) {
   if (!b) return;
   const top = textLayer.getBoundingClientRect().top + b.row * lineH;
   const minY = Math.max(0, controls.getBoundingClientRect().bottom) + lineH;
-  const maxY = window.innerHeight - 2 * lineH;
+  const maxY = window.innerHeight - 4 * lineH;
   if (top < minY || top + lineH > maxY) window.scrollBy(0, top - minY - (window.innerHeight - minY) / 3);
 }
 
 document.addEventListener('keydown', (e) => {
-  if (work.hidden || act || e.isComposing) return;
-  if (e.key === 'Escape' && options.open) {
-    options.open = false;
+  if (work.hidden || view !== 'essay' || act || e.isComposing) return;
+  if (e.key === 'Escape' && document.querySelector('details.menu[open]')) {
+    closeMenus();
     return;
   }
-  if (e.target.closest && e.target.closest('#options .panel')) return;  // let the menu's own fields work
+  // let menus and text fields work as usual
+  if (e.target.closest && e.target.closest('.menu .panel, input, textarea, select')) return;
   const mod = (e.ctrlKey || e.metaKey) && !e.altKey;  // Ctrl+Alt is AltGr on Windows keyboards
   if (mod && e.key.toLowerCase() === 'z') {
     e.preventDefault();
@@ -1298,6 +1915,511 @@ document.addEventListener('keydown', (e) => {
   fn();
 });
 
+// Touch screens have no keys to step with: buttons do it, and a real text box brings up the keyboard
+document.getElementById('backStep').addEventListener('click', stepBack);
+document.getElementById('wordStep').addEventListener('click', stepWord);
+document.getElementById('sentStep').addEventListener('click', stepSentence);
+
+typeIn.addEventListener('input', () => {
+  const v = typeIn.value;
+  typed = v.trim();
+  if (/\s$/.test(v)) typed ? checkTyped() : (typeIn.value = '', stepWord());
+  else { stepping = true; draw(); }
+});
+typeIn.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  typed ? checkTyped() : stepWord();
+});
+
+/* ---------- blank page: write it from memory, then check ---------- */
+
+// What can be written out: the whole essay, one paragraph, or both halves of a paired body paragraph
+function blankTargets() {
+  const t = [{ id: 'all', label: 'the whole essay', lo: 0, hi: words.length - 1 }];
+  if (paras.length < 2) return t;
+  paras.forEach((pp, p) => t.push({ id: 'p' + p, label: paraName(p), lo: pp.lo, hi: pp.hi }));
+  if (essay.pair && paras.length >= 4) {
+    for (let j = 1; j + 1 <= paras.length - 2; j += 2) {
+      t.push({ id: 'g' + j, label: 'BP' + (j + 1) / 2 + ', both texts together', lo: paras[j].lo, hi: paras[j + 1].hi });
+    }
+  }
+  return t;
+}
+
+function loadDraft() {
+  blankInput.value = essay.draft && essay.draft.id === blankTarget.value ? essay.draft.text : '';
+  blankCount.textContent = wc(blankInput.value) + ' words';
+}
+
+function openBlank(id) {
+  stopLive();
+  blankTarget.textContent = '';
+  blankTargets().forEach(t => blankTarget.append(el('option', { value: t.id, textContent: t.label })));
+  blankTarget.value = id;
+  if (!blankTarget.value) blankTarget.value = 'all';
+  blankTarget.disabled = !!ladder;
+  loadDraft();
+  if (!ladder) banner.hidden = true;
+  setView('blank');
+  blankInput.focus();
+}
+
+blankTarget.addEventListener('change', loadDraft);
+
+// The attempt is kept as you type, so a reload doesn't lose forty minutes of writing
+blankInput.addEventListener('input', () => {
+  essay.draft = { id: blankTarget.value, text: blankInput.value };
+  blankCount.textContent = wc(blankInput.value) + ' words';
+  scheduleSave();
+});
+
+blankCancel.addEventListener('click', () => {
+  if (ladder) exitPractise();
+  else setView('essay');
+});
+
+// "self-knowledge" counts the same typed with a hyphen, a dash or a space
+const subKeys = tok => tok.split(/[—–-]+/).map(normalise).filter(Boolean);
+
+// Line the attempt up against the essay: essay words that have no match were dropped
+function grade(text, lo, hi) {
+  const A = [], B = [];
+  for (let i = lo; i <= hi; i++) subKeys(words[i].tok).forEach(k => A.push({ k, i }));
+  const shown = text.split(/\s+/).filter(Boolean);
+  shown.forEach((tok, t) => subKeys(tok).forEach(k => B.push({ k, t })));
+  const pairs = lcsPairs(A.map(x => x.k), B.map(x => x.k), (x, y) => sameWord(y, x));
+  const hitA = new Set(pairs.map(p => p[0])), hitB = new Set(pairs.map(p => p[1]));
+  const dropped = new Set(), extra = new Set();
+  A.forEach((x, n) => { if (!hitA.has(n)) dropped.add(x.i); });
+  B.forEach((x, n) => { if (!hitB.has(n)) extra.add(x.t); });
+  let total = 0, ok = 0;
+  beginAction();
+  for (let i = lo; i <= hi; i++) {
+    setCovered(i, false);
+    if (!words[i].key) continue;
+    total++;
+    const good = !dropped.has(i);
+    good ? (ok++, right[i]++) : wrong[i]++;
+    setMissed(i, !good);
+  }
+  endAction(hi);
+  dirty = true;
+  const attempt = el('div', { className: 'attempt' });
+  shown.forEach((tok, t) => attempt.append(extra.has(t) ? el('s', { textContent: tok }) : tok, ' '));
+  return { ok, total, pct: total ? Math.round(100 * ok / total) : 0,
+    attempt: el('details', {}, el('summary', { textContent: "What you wrote (crossed out isn't in the essay)" }), attempt) };
+}
+
+blankCheck.addEventListener('click', () => {
+  if (!blankInput.value.trim()) return;
+  const t = blankTargets().find(x => x.id === blankTarget.value);
+  const r = grade(blankInput.value, t.lo, t.hi);
+  delete essay.draft;
+  setView('essay');
+  const said = `You recalled ${r.ok} of ${r.total} words (${r.pct}%).`;
+  if (ladder) ladderResult(r, said);
+  else {
+    fillBar(banner, said + (r.ok < r.total ? ' The words you dropped are in red.' : ''), [
+      ['Try again', () => openBlank(t.id)],
+      ['Close', () => { banner.hidden = true; }, 'link']
+    ], r.attempt);
+    scrollToWord(t.lo);
+  }
+  saveNow();
+});
+
+/* ---------- practise: a ladder for each paragraph ---------- */
+
+// Each paragraph climbs from reading it to writing it on a blank page
+const STEPS = ['Read', 'First letters', 'A third hidden', 'Two thirds hidden', 'Blank page'];
+const MASTERED = STEPS.length;
+const PASS = 90;  // % of a paragraph to get right on the blank page
+
+function startPractise() {
+  stopLive();
+  if (!Array.isArray(essay.ladder) || essay.ladder.length !== paras.length) essay.ladder = new Array(paras.length).fill(0);
+  const p = essay.ladder.findIndex(s => s < MASTERED);
+  ladder = { p: Math.max(p, 0) };
+  p < 0 ? ladderDone() : presentStep();
+}
+
+function exitPractise() {
+  ladder = null;
+  forceHints = false;
+  banner.hidden = true;
+  setView('essay');
+  setScope(null);
+}
+
+const ladderNav = () => [['Skip paragraph', nextParagraph, 'link'], ['Exit', exitPractise, 'link']];
+
+function ladderHead(step) {
+  return `${paraName(ladder.p)} (${ladder.p + 1} of ${paras.length}) · Step ${step + 1} of ${STEPS.length} · `;
+}
+
+function moveStep(d) {
+  const lad = essay.ladder;
+  lad[ladder.p] = Math.min(MASTERED, Math.max(0, lad[ladder.p] + d));
+  dirty = true;
+  saveNow();
+  presentStep();
+}
+
+function presentStep() {
+  const p = ladder.p, st = essay.ladder[p];
+  if (st >= MASTERED) return nextParagraph();
+  forceHints = st === 1;
+  setView('essay');
+  setScope(p);
+  window.scrollTo(0, 0);
+  const { lo, hi } = scope;
+  if (st === 4) {
+    fillBar(banner, ladderHead(st) + `Write it out from memory. ${PASS}% or better masters the paragraph.`, ladderNav());
+    openBlank('p' + p);
+    return;
+  }
+  beginAction();
+  for (let i = lo; i <= hi; i++) setCovered(i, st === 1);
+  if (st >= 2) {
+    const ids = keyed(lo, hi);
+    pickWeighted(ids, Math.round(ids.length * (st === 2 ? 1 / 3 : 2 / 3))).forEach(i => setCovered(i, true));
+  }
+  endAction(lo - 1);
+  stepping = st > 0;
+  const got = [['Got it', () => moveStep(1), 'primary'], ['Shaky', () => moveStep(-1)]];
+  if (st === 0) fillBar(banner, ladderHead(st) + 'Read it aloud twice, slowly.', [['Next step', () => moveStep(1), 'primary'], ...ladderNav()]);
+  else if (st === 1) fillBar(banner, ladderHead(st) + 'Recite it from the first letters. Tap a word to check it and long-press or right-click any you got wrong.', [...got, ...ladderNav()]);
+  else fillBar(banner, ladderHead(st) + 'Recite the whole paragraph, filling the gaps. Tap a gap to check it.', [...got, ...ladderNav()]);
+}
+
+function ladderResult(r, said) {
+  const p = ladder.p, pass = r.pct >= PASS;
+  essay.ladder[p] = pass ? MASTERED : 3;
+  forceHints = false;
+  setScope(p);
+  fillBar(banner, paraName(p) + ' · ' + said + (pass ? ' Paragraph mastered.' : ' The words you dropped are in red. Read them over, then climb back up.'), [
+    pass ? ['Next paragraph', nextParagraph, 'primary'] : ['Go again', presentStep, 'primary'],
+    ['Exit', exitPractise, 'link']
+  ], r.attempt);
+}
+
+function nextParagraph() {
+  const lad = essay.ladder, n = lad.length;
+  for (let k = 1; k <= n; k++) {
+    const q = (ladder.p + k) % n;
+    if (lad[q] < MASTERED) { ladder.p = q; return presentStep(); }
+  }
+  ladderDone();
+}
+
+function ladderDone() {
+  forceHints = false;
+  setView('essay');
+  setScope(null);
+  fillBar(banner, 'Every paragraph is mastered. The last test is the whole essay on a blank page.', [
+    ['Blank page', () => { exitPractise(); openBlank('all'); }, 'primary'],
+    ['Start the ladder again', () => { essay.ladder.fill(0); saveStore(); startPractise(); }],
+    ['Exit', exitPractise, 'link']
+  ]);
+}
+
+practiseBtn.addEventListener('click', startPractise);
+
+/* ---------- skeleton, quote drill, Anki ---------- */
+
+// Only the first three words of each sentence: learn the order of the argument first
+function skeleton() {
+  const [lo, hi] = range();
+  beginAction();
+  let s = -1, n = 0;
+  for (let i = lo; i <= hi; i++) {
+    if (words[i].s !== s) { s = words[i].s; n = 0; }
+    if (words[i].key) n++;
+    setCovered(i, n > 3);
+  }
+  endAction(lo - 1);
+}
+
+const NO_QUOTES = 'No quotes found. Anything inside "quotation marks" counts as a quote.';
+
+// Everything visible except the quotes, so the analysis around a quote is your cue for it
+function hideQuotes() {
+  const [lo, hi] = range();
+  if (!quotes.some(q => q.lo >= lo && q.hi <= hi)) return alert(NO_QUOTES);
+  beginAction();
+  for (let i = lo; i <= hi; i++) setCovered(i, words[i].q >= 0);
+  endAction(lo - 1);
+  stepping = true;
+  draw();
+}
+
+// One cloze note per quote: the sentence it sits in, with the quote blanked
+ankiBtn.addEventListener('click', () => {
+  options.open = false;
+  if (!quotes.length) return alert(NO_QUOTES);
+  const title = titleOf(essay).replace(/\s+/g, ' ');
+  const lines = quotes.map(q => {
+    const a = sentenceOf(q.lo)[0], b = sentenceOf(q.hi).pop();
+    const out = [];
+    for (let i = a; i <= b; i++) out.push((i === q.lo ? '{{c1::' : '') + words[i].tok + (i === q.hi ? '}}' : ''));
+    return out.join(' ') + '\t' + title;
+  });
+  download('quotes-' + title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.txt',
+    '#separator:tab\n#html:false\n#notetype:Cloze\n' + lines.join('\n') + '\n', 'text/plain');
+});
+
+/* ---------- recite aloud: the microphone reveals words as you say them ---------- */
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let mic = null;
+let partial = '';  // the start of a word said in two parts ("self" ... "knowledge")
+
+// The next k hidden words after the cursor
+function upcoming(k) {
+  const [lo, hi] = range();
+  const out = [];
+  for (let i = Math.max(cursor + 1, lo); i <= hi && out.length < k; i++) if (covered[i] && words[i].key) out.push(i);
+  return out;
+}
+
+// One spoken word. It can match the next hidden word or one just past it; a word you
+// skip stays black, so what's left covered at the end is what you left out.
+function hear(said) {
+  const g = normalise(said);
+  if (!g || !mic) return;
+  const next = upcoming(4);
+  const joined = partial + g;
+  partial = '';
+  for (let n = 0; n < next.length; n++) {
+    const i = next[n], key = words[i].key;
+    if (n > 0 && key.length < 4) continue;  // don't leap ahead on an "of" or a "the"
+    if (sameWord(joined, key) || sameWord(g, key)) {
+      right[i]++;
+      beginAction();
+      revealWord(i);
+      endAction();
+      flash(i, true);
+      const after = upcoming(1);
+      after.length ? scrollToWord(after[0]) : finishRecite();
+      return;
+    }
+    if (n === 0 && key.startsWith(joined)) { partial = joined; return; }
+  }
+}
+
+function startRecite() {
+  if (!SR) return alert("This browser can't listen. Recite aloud works in Chrome, Edge and Safari.");
+  stopLive();
+  if (!upcoming(1).length) setRange(true);
+  const r = new SR();
+  r.lang = 'en-AU';
+  r.continuous = true;
+  r.interimResults = true;
+  let used = [];  // how many words of each result have been heard already
+  r.onresult = (e) => {
+    for (let k = e.resultIndex; k < e.results.length && mic === r; k++) {
+      const said = e.results[k][0].transcript.trim().split(/\s+/).filter(Boolean);
+      for (let j = used[k] || 0; j < said.length; j++) hear(said[j]);
+      used[k] = Math.max(used[k] || 0, said.length);
+    }
+  };
+  // the browser stops listening after a silence; keep going until told to stop
+  r.onend = () => {
+    if (mic !== r) return;
+    used = [];
+    try { r.start(); } catch (e) { stopRecite(); }
+  };
+  r.onerror = (e) => {
+    if (mic !== r || e.error === 'no-speech' || e.error === 'aborted') return;
+    stopRecite();
+    alert(e.error === 'network' ? 'Recite aloud needs an internet connection.' : "Couldn't use the microphone. Check that this site is allowed to use it.");
+  };
+  mic = r;
+  partial = '';
+  stepping = true;
+  try { r.start(); } catch (e) {}
+  fillBar(live, 'Listening. Recite from the blue marker and the words appear as you say them.', [['Stop', stopRecite]]);
+  draw();
+}
+
+function stopRecite() {
+  if (!mic) return;
+  const r = mic;
+  mic = null;
+  try { r.stop(); } catch (e) {}
+  live.hidden = true;
+}
+
+function finishRecite() {
+  stopRecite();
+  const [lo, hi] = range();
+  const left = keyed(lo, hi, i => covered[i]).length;
+  fillBar(live, left ? `Done. ${left} words are still black: you skipped them or the mic missed them.` : 'Done. You said every word.',
+    [['Close', () => { live.hidden = true; }, 'link']]);
+}
+
+/* ---------- listen with gaps: read aloud, pausing where words are hidden ---------- */
+
+let talk = null;   // { segs: [{ a, b, gap }], k, paused, u, timer }
+let audio = null;
+
+function beep() {
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.frequency.value = 660;
+    g.gain.value = 0.04;
+    o.connect(g).connect(audio.destination);
+    o.start();
+    o.stop(audio.currentTime + 0.09);
+  } catch (e) {}
+}
+
+function pickVoice() {
+  const v = speechSynthesis.getVoices();
+  return v.find(x => /^en[-_]AU/i.test(x.lang)) || v.find(x => /^en[-_]GB/i.test(x.lang)) || v.find(x => /^en/i.test(x.lang)) || null;
+}
+
+function startListen() {
+  if (!('speechSynthesis' in window)) return alert("This browser can't read aloud.");
+  stopLive();
+  // one stretch per run of shown or hidden words, never crossing a sentence
+  const [lo, hi] = range();
+  const segs = [];
+  let cur = null;
+  for (let i = lo; i <= hi; i++) {
+    if (cur && cur.s === words[i].s && (!words[i].key || cur.gap === covered[i])) cur.b = i;
+    else segs.push(cur = { a: i, b: i, gap: covered[i], s: words[i].s });
+  }
+  talk = { segs, k: 0, paused: false, gaps: segs.some(s => s.gap) };
+  listenBar();
+  speakNext();
+}
+
+function speakNext() {
+  const t = talk;
+  if (!t || t.paused) return;
+  const seg = t.segs[t.k];
+  if (!seg) return stopListen();
+  scrollToWord(seg.a);
+  draw();
+  const advance = () => { if (talk === t && !t.paused) { t.k++; speakNext(); } };
+  const say = () => {
+    if (talk !== t || t.paused) return;
+    const u = new SpeechSynthesisUtterance(words.slice(seg.a, seg.b + 1).map(w => w.tok).join(' '));
+    u.lang = 'en-AU';
+    u.voice = pickVoice();
+    u.rate = opts.rate;
+    u.onend = u.onerror = () => { if (t.u === u) advance(); };
+    t.u = u;  // also keeps the utterance alive until it has finished
+    speechSynthesis.speak(u);
+  };
+  if (!seg.gap) return say();
+  // a hidden stretch: a beep, time to say it in your head, then the answer
+  beep();
+  const n = keyed(seg.a, seg.b).length;
+  t.timer = setTimeout(opts.sayAnswers ? say : advance, Math.min(9000, Math.max(1500, 550 * n)) / opts.rate);
+}
+
+function quietListen() {
+  clearTimeout(talk.timer);
+  talk.u = null;
+  speechSynthesis.cancel();
+}
+
+function stopListen() {
+  if (!talk) return;
+  quietListen();
+  talk = null;
+  live.hidden = true;
+  draw();
+}
+
+function listenBar() {
+  const speed = el('select', { title: 'Speed' });
+  [0.8, 1, 1.2, 1.5].forEach(r => speed.append(el('option', { value: r, textContent: r + '×' })));
+  speed.value = opts.rate;
+  speed.addEventListener('change', () => setOpt('rate', +speed.value));
+  const answers = el('input', { type: 'checkbox', checked: opts.sayAnswers });
+  answers.addEventListener('change', () => setOpt('sayAnswers', answers.checked));
+  fillBar(live, talk.gaps ? 'Reading aloud. A beep means hidden words: say them in your head before the answer comes.'
+    : 'Reading aloud. Nothing is hidden, so this is a straight read-through; hide some words to get gaps.', [
+    [talk.paused ? 'Resume' : 'Pause', () => {
+      talk.paused = !talk.paused;
+      if (talk.paused) quietListen();
+      listenBar();
+      speakNext();
+    }],
+    ['Stop', stopListen]
+  ], el('label', {}, speed, ' ', answers, ' say the answers'));
+}
+
+function stopLive() {
+  stopRecite();
+  stopListen();
+  live.hidden = true;
+}
+
+/* ---------- adapt to a question ---------- */
+
+function showQuestion() {
+  const qs = essay.questions || [];
+  adaptNext.hidden = qs.length < 2;
+  if (!qs.length) { adaptQ.textContent = 'Add some questions first.'; return; }
+  let q;
+  do { q = qs[Math.floor(Math.random() * qs.length)]; } while (qs.length > 1 && q === adaptQ.textContent);
+  adaptQ.textContent = q;
+}
+
+// The sentences that have to bend to the question: the introduction, then each topic sentence
+function openAdapt() {
+  stopLive();
+  if (ladder) exitPractise();
+  banner.hidden = true;
+  adaptParts.textContent = '';
+  paras.forEach((pp, p) => {
+    const whole = p === 0 && paras.length > 1;
+    const hi = whole ? pp.hi : sentenceOf(pp.lo).pop();
+    adaptParts.append(el('div', { className: 'part' },
+      el('b', { textContent: paraName(p) + (whole ? ' · thesis' : ' · topic sentence') }),
+      el('p', { textContent: words.slice(pp.lo, hi + 1).map(w => w.tok).join(' ') }),
+      el('textarea', { placeholder: 'Rewrite it to answer the question' })));
+  });
+  const qs = essay.questions || [];
+  adaptList.value = qs.join('\n');
+  adaptEditor.hidden = qs.length > 0;
+  adaptQ.textContent = '';
+  showQuestion();
+  setView('adapt');
+  window.scrollTo(0, 0);
+}
+
+adaptNext.addEventListener('click', showQuestion);
+adaptEdit.addEventListener('click', () => { adaptEditor.hidden = !adaptEditor.hidden; });
+adaptSave.addEventListener('click', () => {
+  essay.questions = adaptList.value.split('\n').map(q => q.trim()).filter(Boolean);
+  saveStore();
+  adaptEditor.hidden = essay.questions.length > 0;
+  showQuestion();
+});
+adaptDone.addEventListener('click', () => setView('essay'));
+
+modes.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-mode]');
+  if (!b) return;
+  modes.open = false;
+  if (view !== 'essay' && b.dataset.mode !== 'adapt' && b.dataset.mode !== 'blank') setView('essay');
+  ({
+    blank: () => openBlank(scope ? 'p' + scope.p : 'all'),
+    recite: startRecite,
+    listen: startListen,
+    skeleton,
+    quotes: hideQuotes,
+    adapt: openAdapt
+  })[b.dataset.mode]();
+});
+
 /* ---------- start ---------- */
 
 numberEssays();  // essays saved before numbering existed
@@ -1306,6 +2428,9 @@ updateTimer();
 const reopen = store.essays.find(e => e.id === store.openId);
 if (reopen) openEssay(reopen, false);
 else showSetup();
+
+// Installed to the home screen, the app opens with no connection
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 
 </body>
