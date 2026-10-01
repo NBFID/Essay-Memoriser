@@ -372,6 +372,30 @@
     #typeIn { flex: 2; min-width: 0; font-size: 16px; }
     #help .keys { display: none; }
   }
+
+  /* the cover is drawn on a canvas, so its colours are read from here */
+  :root { --cover: #111; --on-cover: #fff; --hint: #8c8c8c; }
+  @media (prefers-color-scheme: dark) {
+    :root { --cover: #4d4d49; --on-cover: #fff; --hint: #b0b0aa; }
+  }
+  #intro { max-width: 44em; margin: -8px 0 16px; color: var(--muted); }
+  #nameInput { display: block; width: 100%; max-width: 26em; margin-bottom: 10px; }
+  .note .msg { display: flex; flex-direction: column; gap: 4px; }
+  .note .msg b { font-weight: 650; }
+  .steps { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--muted); }
+  .steps i { width: 18px; height: 4px; border-radius: 2px; background: var(--line); }
+  .steps i.on { background: var(--accent); }
+  .steps em { font-style: normal; margin-left: 5px; }
+  .ptitle { cursor: pointer; }
+  .ptitle:hover { text-decoration: underline; }
+  .ptitle small { font-size: 1em; font-weight: 500; color: var(--muted); }
+  #focusSel { max-width: 15em; text-overflow: ellipsis; }
+  /* a Practise session hides and reveals for you, and its message says what to do */
+  #work.practising .free, #work.practising #help { display: none; }
+  @media (max-width: 700px) {
+    #focusSel { order: -2; flex: 1; max-width: none; }
+    #tools .undo { order: -1; }
+  }
 </style>
 </head>
 <body>
@@ -379,9 +403,11 @@
 
 <div id="setup">
   <h1>EasyEssay</h1>
+  <p id="intro" hidden>Paste an essay to start. It is split into paragraphs, then Practise takes each one from reading it through to writing it out from memory.</p>
   <div id="saved"></div>
   <button id="newBtn" class="btn">+ New essay</button>
   <div id="editor" hidden>
+    <input type="text" id="nameInput" placeholder="Name (optional)" autocomplete="off">
     <textarea id="essayInput" placeholder="Paste your essay here..."></textarea>
     <label class="check">
       <input type="checkbox" id="detect" checked>
@@ -410,6 +436,7 @@
   <div id="backup" class="muted">
     <button id="exportBtn" class="link">Back up essays to a file</button>
     <button id="importBtn" class="link">Restore from a backup</button>
+    <span id="backupNote"></span>
     <input type="file" id="importFile" accept=".json,application/json" hidden>
   </div>
 </div>
@@ -431,6 +458,7 @@
             <button class="item" data-mode="listen">Listen with gaps<small>Read to you, pausing at hidden words</small></button>
             <button class="item" data-mode="skeleton">Skeleton<small>Only the first words of each sentence</small></button>
             <button class="item" data-mode="quotes">Quote drill<small>Hide just the quotes</small></button>
+            <button class="item" data-mode="missed">Missed words<small>Hide just the words you get wrong</small></button>
             <button class="item" data-mode="adapt">Adapt to a question<small>Rework your thesis and topic sentences</small></button>
           </div>
         </details>
@@ -461,6 +489,7 @@
       </span>
     </div>
     <div id="tools" class="ess">
+      <select id="focusSel" class="btn" title="Show the whole essay or one paragraph" hidden></select>
       <span class="seg" id="pens">
         <button type="button" class="btn selected" data-pen="cover" title="Tap or drag to reveal and hide">Reveal</button>
         <button type="button" class="btn" data-pen="hl" id="hlPen" title="Tap or drag to highlight"><i id="hlDot"></i><span id="hlLabel">Highlight</span></button>
@@ -473,12 +502,12 @@
         </details>
         <button type="button" class="btn" data-pen="miss" title="Mark words you got wrong (or right-click a word)"><span class="cross">✗</span> Missed</button>
       </span>
-      <span class="seg">
+      <span class="seg free">
         <button id="showAllBtn" class="btn">Show all</button>
         <button id="eraseBtn" class="btn" title="Hide more of the essay, starting with key words and the ones you get wrong">Hide 20%</button>
         <button id="coverAllBtn" class="btn">Cover all</button>
       </span>
-      <span class="seg">
+      <span class="seg undo">
         <button id="undoBtn" class="btn" disabled title="Undo (Ctrl+Z)">↶</button>
         <button id="redoBtn" class="btn" disabled title="Redo (Ctrl+Y)">↷</button>
       </span>
@@ -505,7 +534,7 @@
     </div>
     <textarea id="blankInput" spellcheck="false" autocomplete="off" autocorrect="off"></textarea>
     <div class="go">
-      <button id="blankCheck" class="btn primary">Check</button>
+      <button id="blankCheck" class="btn primary" title="Ctrl+Enter">Check</button>
       <button id="blankCancel" class="btn">Cancel</button>
       <span id="blankCount" class="muted"></span>
     </div>
@@ -608,6 +637,10 @@ const adaptSave = document.getElementById('adaptSave');
 const adaptParts = document.getElementById('adaptParts');
 const adaptDone = document.getElementById('adaptDone');
 const typeIn = document.getElementById('typeIn');
+const intro = document.getElementById('intro');
+const nameInput = document.getElementById('nameInput');
+const backupNote = document.getElementById('backupNote');
+const focusSel = document.getElementById('focusSel');
 
 // Saved in localStorage: { essays: [{ id, num, title, text, titles, pair, covered, hl, missed, right, wrong,
 // ladder, draft, questions, cursor, updated }], openId, opts, timerEnd }
@@ -645,7 +678,7 @@ let forceHints = false;
 
 // Layout, measured from the DOM
 let rows = [];         // rows[r] = [{ x0, x1, i }] hit boxes on text line r (i = -1 for gaps)
-let lineH = 24, W = 0, H = 0, dpr = 1, font = '', ascent = 0, INK = '#000', PAPER = '#fff';
+let lineH = 24, W = 0, H = 0, dpr = 1, font = '', ascent = 0, COVER = '#111', ONCOVER = '#fff', HINT = '#8c8c8c';
 
 function el(tag, props, ...kids) {
   const e = Object.assign(document.createElement(tag), props);
@@ -881,7 +914,7 @@ function upgradeTitles(rec) {
 /* ---------- essays screen ---------- */
 
 function titleOf(rec) {
-  return rec.title || 'Essay ' + rec.num;
+  return rec.title || (rec.pair ? rec.pair.join(' and ') : 'Essay ' + rec.num);
 }
 
 // Essays are numbered in the order they were added; a number sticks once given,
@@ -902,6 +935,7 @@ function showSetup() {
   work.hidden = true;
   setup.hidden = false;
   renderSaved();
+  intro.hidden = store.essays.length > 0;
   if (store.essays.length) closeEditor();
   else openEditor(null);
 }
@@ -909,6 +943,8 @@ function showSetup() {
 function renderSaved() {
   savedList.textContent = '';
   exportBtn.hidden = !store.essays.length;
+  // saved essays live only in this browser, so say how stale the safety copy is
+  backupNote.textContent = !store.essays.length ? '' : store.backupAt ? 'Last backup ' + daysAgo(store.backupAt) : 'Not backed up yet';
   store.essays.slice().sort((a, b) => a.num - b.num).forEach(rec => {
     const open = el('button', { className: 'link open', textContent: titleOf(rec), title: rec.text.trim().split('\n')[0] });
     open.addEventListener('click', () => openEssay(rec, false));
@@ -923,6 +959,7 @@ function renderSaved() {
     meta.append([
       wc(rec.text) + ' words',
       misses ? misses + ' missed' : '',
+      rec.lastScore != null ? 'blank page ' + rec.lastScore + '%' : '',
       rec.updated ? 'practised ' + daysAgo(rec.updated) : ''
     ].filter(Boolean).join(' · '));
 
@@ -982,6 +1019,7 @@ function renderSecs() {
   const secs = currentSections();
   secsBox.hidden = !secs || !secs.length;
   pairNames.hidden = naming.value !== 'text';
+  nameInput.placeholder = secs && secs.pair ? secs.pair.join(' and ') : 'Name (optional)';
   secList.textContent = '';
   if (!secs) return;
   secs.forEach((s, i) => {
@@ -1005,6 +1043,7 @@ naming.addEventListener('change', () => { secEdits = {}; renderSecs(); });
 function openEditor(rec) {
   editingId = rec ? rec.id : null;
   essayInput.value = rec ? rec.text : '';
+  nameInput.value = rec && rec.title || '';
   detect.checked = rec ? !!rec.titles : true;
   naming.value = rec && rec.plain ? 'single' : 'text';
   namesTouched = !!(rec && rec.pair);
@@ -1071,12 +1110,17 @@ startBtn.addEventListener('click', () => {
   rec.titles = secs ? secs.map((s, i) => s.title.trim() || 'Paragraph ' + (i + 1)) : undefined;
   rec.pair = secs && secs.pair || undefined;
   rec.plain = secs && naming.value === 'single' || undefined;
+  rec.title = nameInput.value.trim() || undefined;
+  // ask the browser not to clear saved essays when it tidies up storage
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   closeEditor();
   openEssay(rec, true);
 });
 
 exportBtn.addEventListener('click', () => {
+  store.backupAt = Date.now();
   saveNow();
+  renderSaved();
   download('essays-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify({ app: 'essay-eraser', essays: store.essays }), 'application/json');
 });
 
@@ -1123,6 +1167,9 @@ function openEssay(rec, fresh, practise) {
   work.hidden = false;
   essayTitle.textContent = titleOf(rec);
   buildTokens(rec.text);
+  fillFocus();
+  paintHeads();
+  setPractising(false);
   const n = words.length;
   const load = (str, parse, fill) => str && str.length === n ? Array.from(str, parse) : new Array(n).fill(fill);
   hl = load(rec.hl, c => c === '-' ? -1 : +c, -1);
@@ -1184,8 +1231,54 @@ function paraName(p) {
 function setScope(p) {
   scope = p == null ? null : { p, lo: paras[p].lo, hi: paras[p].hi };
   nodes.forEach(n => { n.el.hidden = !!scope && n.p !== p; });
+  focusSel.value = scope ? p : '';
   if (scope && (cursor < scope.lo - 1 || cursor > scope.hi)) cursor = scope.lo - 1;
   if (view === 'essay') { measure(); draw(); }
+}
+
+function fillFocus() {
+  focusSel.textContent = '';
+  focusSel.append(el('option', { value: '', textContent: 'Whole essay' }));
+  paras.forEach((_, p) => focusSel.append(el('option', { value: p, textContent: paraName(p) })));
+  focusSel.hidden = paras.length < 2;
+}
+
+// Work on one paragraph (null = the whole essay). In a Practise session this moves the session there.
+function focusPara(p) {
+  if (ladder) {
+    if (p == null) return exitPractise();
+    ladder.p = p;
+    ladder.picked = true;
+    return presentStep();
+  }
+  const was = scope;
+  banner.hidden = true;
+  setScope(p);
+  if (p == null && was) scrollToWord(paras[was.p].lo);
+  else window.scrollTo(0, 0);
+}
+
+focusSel.addEventListener('change', () => focusPara(focusSel.value === '' ? null : +focusSel.value));
+
+function setPractising(on) {
+  practiseBtn.textContent = on ? 'Exit practice' : 'Practise';
+  work.classList.toggle('practising', on);
+}
+
+// Each heading says how far up the ladder its paragraph is
+function paintHeads() {
+  paras.forEach((pp, p) => {
+    if (!pp.head) return;
+    const st = essay.ladder && essay.ladder[p] || 0;
+    pp.head.textContent = paraName(p);
+    if (st) pp.head.append(el('small', { textContent: st >= MASTERED ? ' · mastered' : ' · step ' + (st + 1) + ' of ' + STEPS.length }));
+  });
+}
+
+// Says which drill is on, with a way out; a Practise session keeps its own message
+function modeNote(text) {
+  if (ladder) return;
+  fillBar(banner, text, [['Show all', () => setRange(false)], ['Close', () => { banner.hidden = true; }, 'link']]);
 }
 
 // The words the tools act on
@@ -1194,9 +1287,22 @@ function range() {
 }
 
 // A message strip: some text, then buttons as [label, action, 'primary' | 'link' | undefined]
+// text can be { title, step, text } for a message with a heading and the ladder's step marker
 function fillBar(bar, text, buttons = [], extra) {
   bar.textContent = '';
-  bar.append(el('span', { textContent: text }));
+  const msg = el('span', { className: 'msg' });
+  if (typeof text === 'string') msg.textContent = text;
+  else {
+    msg.append(el('b', { textContent: text.title }));
+    if (text.step != null) {
+      const steps = el('span', { className: 'steps' });
+      STEPS.forEach((_, k) => steps.append(el('i', { className: k <= text.step ? 'on' : '' })));
+      steps.append(el('em', { textContent: 'Step ' + (text.step + 1) + ' of ' + STEPS.length + ': ' + STEPS[text.step] }));
+      msg.append(steps);
+    }
+    if (text.text) msg.append(el('span', { textContent: text.text }));
+  }
+  bar.append(msg);
   buttons.forEach(([label, fn, kind]) => {
     const b = el('button', { className: kind === 'link' ? 'link' : 'btn ' + (kind || ''), textContent: label });
     b.addEventListener('click', fn);
@@ -1258,12 +1364,18 @@ function updateTimer() {
   timerBtn.textContent = end ? 'Stop' : 'Start';
   if (!end) return;
   const left = Math.ceil((end - Date.now()) / 1000);
+  if (left <= 0 && !store.timerRang) {
+    store.timerRang = true;
+    saveStore();
+    [0, 350, 700].forEach(d => setTimeout(beep, d));
+  }
   timerEl.classList.toggle('up', left <= 0);
   timerEl.textContent = left <= 0 ? "Time's up" : Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
 }
 
 function setTimer(end) {
   store.timerEnd = end;
+  store.timerRang = false;
   saveStore();
   updateTimer();
 }
@@ -1319,7 +1431,9 @@ function buildTokens(text) {
     if (p >= 0) {
       paras.push({ lo: words.length, hi: words.length + lineWords.length - 1 });
       if (essay.titles && essay.titles[p]) {
-        const head = el('div', { className: 'ptitle', textContent: essay.titles[p] });
+        const head = el('div', { className: 'ptitle', textContent: essay.titles[p], title: 'Show only this paragraph' });
+        head.addEventListener('click', () => { if (!ladder) focusPara(scope && scope.p === p ? null : p); });
+        paras[p].head = head;
         nodes.push({ el: head, p });
         textLayer.appendChild(head);
       }
@@ -1377,9 +1491,10 @@ function findQuotes() {
 function measure() {
   const origin = textLayer.getBoundingClientRect();
   const cs = getComputedStyle(textLayer);
-  const ss = getComputedStyle(stage);
-  INK = ss.color;
-  PAPER = ss.backgroundColor;
+  const rs = getComputedStyle(document.documentElement);
+  COVER = rs.getPropertyValue('--cover').trim() || COVER;
+  ONCOVER = rs.getPropertyValue('--on-cover').trim() || ONCOVER;
+  HINT = rs.getPropertyValue('--hint').trim() || HINT;
   lineH = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.5;
   W = origin.width;
   H = origin.height;
@@ -1440,14 +1555,14 @@ function gapCovered(g) {
 
 function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = INK;
+  ctx.fillStyle = COVER;
   words.forEach((wd, i) => { if (covered[i]) wd.boxes.forEach(b => fillBox(b)); });
   gaps.forEach(g => { if (gapCovered(g)) g.boxes.forEach(b => fillBox(b)); });
 
   ctx.font = font;
   ctx.textBaseline = 'alphabetic';
   if (opts.hints || forceHints) {
-    ctx.fillStyle = '#8c8c8c';
+    ctx.fillStyle = HINT;
     words.forEach((wd, i) => {
       const b = wd.boxes[0];
       if (covered[i] && b) ctx.fillText(wd.hint, (b.x + 1) * dpr, b.base * dpr);
@@ -1468,9 +1583,9 @@ function render() {
   if (b) {
     // what you've typed so far, written into the blank it's answering
     if (typed) {
-      ctx.fillStyle = INK;
+      ctx.fillStyle = COVER;
       fillBox(b, Math.max(b.w, ctx.measureText(typed).width / dpr + 4));
-      ctx.fillStyle = PAPER;
+      ctx.fillStyle = ONCOVER;
       ctx.fillText(typed, (b.x + 1) * dpr, b.base * dpr);
     }
     ctx.fillStyle = '#2f7cff';
@@ -1637,6 +1752,7 @@ function sentenceOf(i) {
 }
 
 function setRange(v) {
+  if (!ladder) banner.hidden = true;
   const [lo, hi] = range();
   beginAction();
   for (let i = lo; i <= hi; i++) setCovered(i, v);
@@ -1667,6 +1783,7 @@ function keyed(lo, hi, test = () => true) {
 
 // Progressive hiding: each press hides another slice of what's still showing
 eraseBtn.addEventListener('click', () => {
+  if (!ladder) banner.hidden = true;
   const [lo, hi] = range();
   const k = Math.ceil(keyed(lo, hi).length * opts.eraseStep / 100);
   beginAction();
@@ -1813,6 +1930,7 @@ stage.addEventListener('pointerdown', (e) => {
   // A press that never got its pointerup (released outside the window) mustn't lock the essay
   if (gesture) endGesture(gesture, true);
   clearTyped();
+  if (e.target.closest('.ptitle')) return;  // a heading takes a plain click
   if (e.button === 2) {
     toggleMissedAt(e.clientX, e.clientY);
     return;
@@ -1940,7 +2058,15 @@ function typeChar(c) {
 
 function afterStep() {
   stepping = true;
-  scrollToWord(nextCovered());
+  const n = nextCovered();
+  scrollToWord(n);
+  if (n >= 0 || ladder || mic) return;
+  // nothing left to reveal: offer the next thing to do
+  fillBar(banner, scope ? "That's the whole paragraph." : "That's the whole essay.", [
+    ['Hide ' + opts.eraseStep + '% and go again', () => eraseBtn.click(), 'primary'],
+    ['Blank page', () => openBlank(scope ? 'p' + scope.p : 'all')],
+    ['Close', () => { banner.hidden = true; }, 'link']
+  ]);
 }
 
 // Keep a word on screen, below the sticky toolbar
@@ -2052,6 +2178,10 @@ blankInput.addEventListener('input', () => {
   scheduleSave();
 });
 
+blankInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) blankCheck.click();
+});
+
 blankCancel.addEventListener('click', () => {
   if (ladder) exitPractise();
   else setView('essay');
@@ -2093,6 +2223,7 @@ blankCheck.addEventListener('click', () => {
   if (!blankInput.value.trim()) return;
   const t = blankTargets().find(x => x.id === blankTarget.value);
   const r = grade(blankInput.value, t.lo, t.hi);
+  if (t.id === 'all') essay.lastScore = r.pct;
   delete essay.draft;
   setView('essay');
   const said = `You recalled ${r.ok} of ${r.total} words (${r.pct}%).`;
@@ -2124,6 +2255,8 @@ function startPractise() {
 
 function exitPractise() {
   ladder = null;
+  setPractising(false);
+  paintHeads();
   forceHints = false;
   banner.hidden = true;
   setView('essay');
@@ -2132,8 +2265,8 @@ function exitPractise() {
 
 const ladderNav = () => [['Skip paragraph', nextParagraph, 'link'], ['Exit', exitPractise, 'link']];
 
-function ladderHead(step) {
-  return `${paraName(ladder.p)} (${ladder.p + 1} of ${paras.length}) · Step ${step + 1} of ${STEPS.length} · `;
+function ladderMsg(step, text) {
+  return { title: `${paraName(ladder.p)} · paragraph ${ladder.p + 1} of ${paras.length}`, step, text };
 }
 
 function moveStep(d) {
@@ -2146,14 +2279,29 @@ function moveStep(d) {
 
 function presentStep() {
   const p = ladder.p, st = essay.ladder[p];
-  if (st >= MASTERED) return nextParagraph();
+  paintHeads();
+  setPractising(true);
+  if (st >= MASTERED) {
+    if (!ladder.picked) return nextParagraph();
+    // a mastered paragraph picked by hand: show it and offer the climb again
+    forceHints = false;
+    setView('essay');
+    setScope(p);
+    setRange(false);
+    fillBar(banner, { title: paraName(p) + ' · mastered', text: 'Climb it again to keep it fresh, or move on.' }, [
+      ['Climb again', () => { essay.ladder[p] = 0; presentStep(); }, 'primary'],
+      ['Next paragraph', nextParagraph],
+      ['Exit', exitPractise, 'link']
+    ]);
+    return;
+  }
   forceHints = st === 1;
   setView('essay');
   setScope(p);
   window.scrollTo(0, 0);
   const { lo, hi } = scope;
   if (st === 4) {
-    fillBar(banner, ladderHead(st) + `Write it out from memory. ${PASS}% or better masters the paragraph.`, ladderNav());
+    fillBar(banner, ladderMsg(st, `Write it out from memory. ${PASS}% or better masters the paragraph.`), ladderNav());
     openBlank('p' + p);
     return;
   }
@@ -2166,17 +2314,18 @@ function presentStep() {
   endAction(lo - 1);
   stepping = st > 0;
   const got = [['Got it', () => moveStep(1), 'primary'], ['Shaky', () => moveStep(-1)]];
-  if (st === 0) fillBar(banner, ladderHead(st) + 'Read it aloud twice, slowly.', [['Next step', () => moveStep(1), 'primary'], ...ladderNav()]);
-  else if (st === 1) fillBar(banner, ladderHead(st) + 'Recite it from the first letters. Tap a word to check it and long-press or right-click any you got wrong.', [...got, ...ladderNav()]);
-  else fillBar(banner, ladderHead(st) + 'Recite the whole paragraph, filling the gaps. Tap a gap to check it.', [...got, ...ladderNav()]);
+  if (st === 0) fillBar(banner, ladderMsg(st, 'Read it aloud twice, slowly.'), [['Next step', () => moveStep(1), 'primary'], ...ladderNav()]);
+  else if (st === 1) fillBar(banner, ladderMsg(st, 'Recite it from the first letters. Tap a word to check it and long-press or right-click any you got wrong.'), [...got, ...ladderNav()]);
+  else fillBar(banner, ladderMsg(st, 'Recite the whole paragraph, filling the gaps. Tap a gap to check it.'), [...got, ...ladderNav()]);
 }
 
 function ladderResult(r, said) {
   const p = ladder.p, pass = r.pct >= PASS;
   essay.ladder[p] = pass ? MASTERED : 3;
+  paintHeads();
   forceHints = false;
   setScope(p);
-  fillBar(banner, paraName(p) + ' · ' + said + (pass ? ' Paragraph mastered.' : ' The words you dropped are in red. Read them over, then climb back up.'), [
+  fillBar(banner, { title: paraName(p) + (pass ? ' · mastered' : ' · not there yet'), text: said + (pass ? '' : ' The words you dropped are in red. Read them over, then climb back up.') }, [
     pass ? ['Next paragraph', nextParagraph, 'primary'] : ['Go again', presentStep, 'primary'],
     ['Exit', exitPractise, 'link']
   ], r.attempt);
@@ -2184,6 +2333,7 @@ function ladderResult(r, said) {
 
 function nextParagraph() {
   const lad = essay.ladder, n = lad.length;
+  ladder.picked = false;
   for (let k = 1; k <= n; k++) {
     const q = (ladder.p + k) % n;
     if (lad[q] < MASTERED) { ladder.p = q; return presentStep(); }
@@ -2192,6 +2342,7 @@ function nextParagraph() {
 }
 
 function ladderDone() {
+  setPractising(true);
   forceHints = false;
   setView('essay');
   setScope(null);
@@ -2202,7 +2353,7 @@ function ladderDone() {
   ]);
 }
 
-practiseBtn.addEventListener('click', startPractise);
+practiseBtn.addEventListener('click', () => ladder ? exitPractise() : startPractise());
 
 /* ---------- skeleton, quote drill, Anki ---------- */
 
@@ -2217,6 +2368,7 @@ function skeleton() {
     setCovered(i, n > 3);
   }
   endAction(lo - 1);
+  modeNote('Skeleton: only the first three words of each sentence are showing. Recite the rest.');
 }
 
 const NO_QUOTES = 'No quotes found. Anything inside "quotation marks" counts as a quote.';
@@ -2230,6 +2382,19 @@ function hideQuotes() {
   endAction(lo - 1);
   stepping = true;
   draw();
+  modeNote('Quote drill: only the quotes are hidden. Use the analysis around each one as your cue.');
+}
+
+// Just the words you have got wrong, hidden in place
+function drillMissed() {
+  const [lo, hi] = range();
+  if (!keyed(lo, hi, i => missed[i]).length) return alert('No missed words here yet. A word is marked when you get it wrong.');
+  beginAction();
+  for (let i = lo; i <= hi; i++) setCovered(i, missed[i]);
+  endAction(lo - 1);
+  stepping = true;
+  draw();
+  modeNote('Missed words: only the words you have got wrong are hidden.');
 }
 
 // One cloze note per quote: the sentence it sits in, with the quote blanked
@@ -2448,6 +2613,8 @@ function showQuestion() {
   let q;
   do { q = qs[Math.floor(Math.random() * qs.length)]; } while (qs.length > 1 && q === adaptQ.textContent);
   adaptQ.textContent = q;
+  // bring back what was written for this question last time
+  adaptParts.querySelectorAll('textarea').forEach((a, p) => { a.value = (essay.adapted && essay.adapted[q] || {})[p] || ''; });
 }
 
 // The sentences that have to bend to the question: the introduction, then each topic sentence
@@ -2459,10 +2626,15 @@ function openAdapt() {
   paras.forEach((pp, p) => {
     const whole = p === 0 && paras.length > 1;
     const hi = whole ? pp.hi : sentenceOf(pp.lo).pop();
+    const area = el('textarea', { placeholder: 'Rewrite it to answer the question' });
+    area.addEventListener('input', () => {
+      ((essay.adapted ||= {})[adaptQ.textContent] ||= {})[p] = area.value;
+      scheduleSave();
+    });
     adaptParts.append(el('div', { className: 'part' },
       el('b', { textContent: paraName(p) + (whole ? ' · thesis' : ' · topic sentence') }),
       el('p', { textContent: words.slice(pp.lo, hi + 1).map(w => w.tok).join(' ') }),
-      el('textarea', { placeholder: 'Rewrite it to answer the question' })));
+      area));
   });
   const qs = essay.questions || [];
   adaptList.value = qs.join('\n');
@@ -2494,6 +2666,7 @@ modes.addEventListener('click', (e) => {
     listen: startListen,
     skeleton,
     quotes: hideQuotes,
+    missed: drillMissed,
     adapt: openAdapt
   })[b.dataset.mode]();
 });
