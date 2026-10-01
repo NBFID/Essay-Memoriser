@@ -49,9 +49,45 @@
     margin: 0;
   }
   .wrap { max-width: 920px; margin: 0 auto; padding: 20px 20px 48px; }
-  h1 { font-size: 22px; font-weight: 650; letter-spacing: -0.01em; margin: 6px 0 18px; }
+  h2 {
+    font-size: 12px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    margin: 28px 0 10px;
+  }
+  .lead { max-width: 44em; margin: 0 0 14px; color: var(--muted); }
+  .lead a { color: inherit; text-underline-offset: 2px; }
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 14px 16px;
+  }
+  .fields { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .fields input[type=text] { flex: 1 1 10em; min-width: 0; }
+  .fields input[type=number] { width: 6em; }
+  .meter { height: 4px; margin: 12px 0; border-radius: 2px; background: var(--line); overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 0; background: var(--accent); }
+  .badge { font-size: 12.5px; padding: 3px 10px; border-radius: 999px; background: var(--soft); white-space: nowrap; }
+  .badge.soon { background: var(--accent); color: var(--paper); }
+
+  /* ---- the pages and the tabs between them ---- */
+  #nav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 4px 0 22px; }
+  #nav .brand { font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
+  #nav .tabs { display: flex; gap: 2px; flex: 1; }
+  #nav a { padding: 6px 12px; border-radius: 8px; font-size: 14px; color: var(--muted); text-decoration: none; }
+  #nav a:hover { background: var(--soft); color: var(--ink); }
+  #nav a.on { background: var(--soft); color: var(--ink); font-weight: 600; }
+  #focusChip { font-variant-numeric: tabular-nums; }
+  @media (max-width: 700px) {
+    #nav .brand { flex: 1; }
+    #nav .tabs { order: 3; flex-basis: 100%; }
+  }
   button, input, select, textarea { font: inherit; color: inherit; }
-  textarea, input[type=text], input[type=number], select {
+  textarea, input[type=text], input[type=number], input[type=date], input[type=time], select {
     background: var(--paper);
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -162,7 +198,7 @@
   .panel select { padding: 3px 6px; }
 
   /* ---- essays screen ---- */
-  #saved .row {
+  .row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -174,9 +210,10 @@
     border-radius: 12px;
     box-shadow: var(--shadow);
   }
-  #saved .open { text-decoration: none; font-weight: 600; white-space: nowrap; }
-  #saved .open:hover { text-decoration: underline; }
-  #saved .meta {
+  .row .open { text-decoration: none; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row button.open:hover { text-decoration: underline; }
+  .row.past { opacity: 0.55; }
+  .row .meta {
     flex: 1;
     min-width: 120px;
     white-space: nowrap;
@@ -211,7 +248,7 @@
   .sec input { width: 11em; flex: none; font-size: 13.5px; }
   .sec .muted { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #editor .go { margin-top: 12px; display: flex; gap: 8px; }
-  #backup { display: flex; gap: 18px; }
+  #backup { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 34px; }
 
   /* ---- toolbar ---- */
   #controls {
@@ -243,7 +280,7 @@
   #right { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   #status { color: var(--muted); font-size: 13px; }
   #timer { font-variant-numeric: tabular-nums; }
-  #timer.up { color: var(--red); border-color: var(--red); }
+  #timer.up, #focusChip.up { color: var(--red); border-color: var(--red); }
   #work:not([data-view="essay"]) .ess { display: none; }
   .cross { color: var(--red); font-weight: bold; }
   #hlDot {
@@ -381,7 +418,69 @@
     :root { --cover: #4d4d49; --on-cover: #fff; --hint: #b0b0aa; }
   }
   #intro { max-width: 44em; margin: -8px 0 16px; color: var(--muted); }
-  #nameInput { display: block; width: 100%; max-width: 26em; margin-bottom: 10px; }
+  #editor .fields { margin-bottom: 10px; }
+
+  /* ---- today ---- */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .tiles .lead { grid-column: 1 / -1; margin: 0; }
+  .tile { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .tile b { font-size: 28px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.15; }
+  .tile span { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile span:last-child { white-space: normal; }
+  #focusSet label { display: inline-flex; align-items: center; gap: 6px; }
+  #focusMins { width: 5em; }
+  #focusTime { font-size: 44px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .sum { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+  .sum b { font-weight: 650; }
+  .bars { display: flex; gap: 8px; height: 96px; margin: 12px 0 10px; }
+  .bars > div { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+  .bars .track { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; border-bottom: 1px solid var(--line); }
+  .bars i { width: 100%; max-width: 44px; background: var(--accent); opacity: 0.5; border-radius: 4px 4px 0 0; }
+  .bars .now { color: var(--ink); font-weight: 600; }
+  .bars .now i { opacity: 1; }
+
+  /* ---- cards ---- */
+  #newDeck { margin: 6px 0 22px; }
+  #deckEditor { margin-bottom: 22px; }
+  #deckText { height: 240px; margin-top: 10px; font-size: 11pt; }
+  #deckEditor .go { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+  #study .top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  #study .top label { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+  #cardBox {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    min-height: 250px;
+    padding: 34px 22px;
+    text-align: center;
+  }
+  #cardFront { font-size: 21px; font-weight: 600; line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; }
+  #cardBack {
+    width: 100%;
+    max-width: 560px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    font-size: 18px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  #cardBack .miss { color: var(--red); font-weight: 600; }
+  #cardInput { width: 100%; max-width: 520px; padding: 9px 12px; font-size: 16px; text-align: center; }
+  #cardActions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+  #cardActions .btn { padding: 9px 18px; font-size: 14.5px; }
+  #studyHelp { margin-top: 10px; text-align: center; }
+
+  /* ---- exams ---- */
+  #examForm, #paperForm { margin-top: 10px; }
+  .papers { margin-bottom: 10px; }
+  .papers .line { display: flex; align-items: baseline; gap: 12px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 14px; }
+  .papers .line span:first-child { flex: 1; min-width: 0; }
+  .papers .sum { margin-bottom: 8px; }
+  .spark { margin-left: auto; display: inline-flex; align-items: flex-end; gap: 2px; height: 22px; }
+  .spark i { width: 6px; background: var(--accent); border-radius: 1px; }
   .note .msg { display: flex; flex-direction: column; gap: 4px; }
   .note .msg b { font-weight: 650; }
   .steps { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--muted); }
@@ -407,13 +506,53 @@
 <body>
 <div class="wrap">
 
-<div id="setup">
-  <h1>EasyEssay</h1>
+<nav id="nav" hidden>
+  <span class="brand">EasyEssay</span>
+  <span class="tabs">
+    <a href="#today">Today</a>
+    <a href="#essays">Essays</a>
+    <a href="#cards">Cards</a>
+    <a href="#exams">Exams</a>
+  </span>
+  <button id="focusChip" class="btn" hidden title="Focus timer"></button>
+</nav>
+
+<div id="today" class="page" hidden>
+  <div id="countdowns" class="tiles"></div>
+  <h2>To do</h2>
+  <div id="todo"></div>
+  <h2>Focus</h2>
+  <div class="card">
+    <form id="focusSet" class="fields">
+      <input type="text" id="focusSubject" list="subjectList" placeholder="Subject" autocomplete="off">
+      <span class="seg">
+        <button type="button" class="btn" data-mins="25">25</button>
+        <button type="button" class="btn" data-mins="50">50</button>
+        <button type="button" class="btn" data-mins="120">120</button>
+      </span>
+      <label><input type="number" id="focusMins" min="1" max="600"> min</label>
+      <button class="btn primary">Start</button>
+    </form>
+    <div id="focusRun" hidden>
+      <div id="focusTime"></div>
+      <div id="focusWhat" class="muted"></div>
+      <div class="meter"><i id="focusFill"></i></div>
+      <button id="focusStop" class="btn">Stop</button>
+    </div>
+  </div>
+  <h2>This week</h2>
+  <div id="week" class="card"></div>
+</div>
+
+<div id="setup" class="page" hidden>
   <p id="intro" hidden>Paste an essay to start. It is split into paragraphs, then Practise takes each one from reading it through to writing it out from memory.</p>
   <div id="saved"></div>
   <button id="newBtn" class="btn">+ New essay</button>
   <div id="editor" hidden>
-    <input type="text" id="nameInput" placeholder="Name (optional)" autocomplete="off">
+    <div class="fields">
+      <input type="text" id="nameInput" placeholder="Name (optional)" autocomplete="off">
+      <input type="text" id="subjectInput" list="subjectList" placeholder="Subject (optional)" autocomplete="off">
+    </div>
     <textarea id="essayInput" placeholder="Paste your essay here..."></textarea>
     <label class="check">
       <input type="checkbox" id="detect" checked>
@@ -439,15 +578,69 @@
       <button id="cancelBtn" class="btn">Cancel</button>
     </div>
   </div>
-  <div id="backup" class="muted">
-    <button id="exportBtn" class="link">Back up essays to a file</button>
-    <button id="importBtn" class="link">Restore from a backup</button>
-    <span id="backupNote"></span>
-    <input type="file" id="importFile" accept=".json,application/json" hidden>
+</div>
+
+<div id="cards" class="page" hidden>
+  <div id="decksView">
+    <p id="cardsIntro" class="lead" hidden>Decks of question-and-answer cards for definitions, vocab and quotes. Type an answer and it is marked on its key words; each card comes back just before you would forget it.</p>
+    <div id="deckList"></div>
+    <button id="newDeck" class="btn">+ New deck</button>
+    <form id="deckEditor" hidden>
+      <div class="fields">
+        <input type="text" id="deckName" placeholder="Deck name" autocomplete="off">
+        <input type="text" id="deckSubject" list="subjectList" placeholder="Subject (optional)" autocomplete="off">
+      </div>
+      <textarea id="deckText" spellcheck="false" placeholder="One card per line:  question - answer&#10;Or paste two columns from a spreadsheet, or an Anki export."></textarea>
+      <div class="go">
+        <button class="btn primary">Save deck</button>
+        <button type="button" id="deckCancel" class="btn">Cancel</button>
+        <span id="deckCount" class="muted"></span>
+      </div>
+    </form>
+  </div>
+  <div id="study" hidden>
+    <div class="top">
+      <button id="studyBack" class="btn quiet">‹ Decks</button>
+      <b id="studyName"></b>
+      <span id="studyLeft" class="muted"></span>
+      <label class="muted"><input type="checkbox" id="cardType"> Type answers</label>
+    </div>
+    <div class="meter"><i id="studyFill"></i></div>
+    <div id="cardBox" class="card">
+      <div id="cardFront"></div>
+      <input type="text" id="cardInput" placeholder="Your answer" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <div id="cardBack" hidden></div>
+      <div id="cardVerdict" class="muted" hidden></div>
+      <div id="cardActions"></div>
+    </div>
+    <div id="studyHelp" class="muted"></div>
   </div>
 </div>
 
-<div id="work" data-view="essay" hidden>
+<div id="exams" class="page" hidden>
+  <h2>Exam dates</h2>
+  <div id="examList"></div>
+  <form id="examForm" class="card fields">
+    <input type="text" id="examSubject" list="subjectList" placeholder="Subject" autocomplete="off" required>
+    <input type="text" id="examName" placeholder="Paper (optional)" autocomplete="off">
+    <input type="date" id="examDate" required>
+    <input type="time" id="examTime">
+    <button class="btn primary" id="examSave">Add exam</button>
+    <button type="button" class="btn" id="examCancel" hidden>Cancel</button>
+  </form>
+  <h2>Past papers</h2>
+  <div id="paperList"></div>
+  <form id="paperForm" class="card fields">
+    <input type="text" id="paperSubject" list="subjectList" placeholder="Subject" autocomplete="off" required>
+    <input type="text" id="paperName" placeholder="Paper, e.g. 2023 HSC" autocomplete="off" required>
+    <input type="number" id="paperMark" placeholder="Mark" min="0" step="any" required>
+    <span class="muted">out of</span>
+    <input type="number" id="paperOutOf" placeholder="100" min="1" step="any" required>
+    <button class="btn primary">Log paper</button>
+  </form>
+</div>
+
+<div id="work" class="page" data-view="essay" hidden>
   <div id="controls">
     <div id="bar">
       <button id="essaysBtn" class="btn quiet" title="Back to your essays">‹ Essays</button>
@@ -496,8 +689,9 @@
             </select> at a time</div>
             <div class="head">Timed write</div>
             <div class="line"><input type="number" id="timerMins" min="1" max="300"> min <button id="timerBtn" class="btn">Start</button></div>
-            <div class="head">Export</div>
-            <button class="item" id="ankiBtn">Quotes to Anki<small>A cloze card for every quote</small></button>
+            <div class="head">Quotes</div>
+            <button class="item" id="quoteCardsBtn">Quotes to cards<small>A deck of your quotes to drill in Cards</small></button>
+            <button class="item" id="ankiBtn">Quotes to Anki<small>A cloze file to import there</small></button>
           </div>
         </details>
       </span>
@@ -577,6 +771,14 @@
     <button id="sentStep" class="btn say">Sentence</button>
   </div>
 </div>
+
+<div id="backup" class="muted" hidden>
+  <button id="exportBtn" class="link">Back up everything to a file</button>
+  <button id="importBtn" class="link">Restore from a backup</button>
+  <span id="backupNote"></span>
+  <input type="file" id="importFile" accept=".json,application/json" hidden>
+</div>
+<datalist id="subjectList"></datalist>
 
 </div>
 
@@ -658,9 +860,16 @@ const backupNote = document.getElementById('backupNote');
 const focusSel = document.getElementById('focusSel');
 const chunkSel = document.getElementById('chunkSel');
 const giveUpBtn = document.getElementById('giveUp');
+const nav = document.getElementById('nav');
+const backupBox = document.getElementById('backup');
+const focusChip = document.getElementById('focusChip');
+const subjectList = document.getElementById('subjectList');
+const subjectInput = document.getElementById('subjectInput');
+const quoteCardsBtn = document.getElementById('quoteCardsBtn');
 
-// Saved in localStorage: { essays: [{ id, num, title, text, titles, pair, covered, hl, missed, right, wrong,
-// ladder, draft, questions, cursor, updated }], openId, opts, timerEnd }
+// Saved in localStorage: { essays: [{ id, num, title, subject, text, titles, pair, covered, hl, missed, right, wrong,
+// steps, ladder, review, draft, questions, cursor, updated }], openId, opts, focus, days, backupAt,
+// and from study.js: decks, exams, papers }
 let store = loadStore();
 const opts = store.opts = { ...DEFAULT_OPTS, ...store.opts };
 let essay = null;      // saved record currently open
@@ -755,6 +964,33 @@ function download(name, text, type) {
   a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ---------- the day's log ---------- */
+
+// What was done each day, for the Today page: store.days[day] = { min: { subject: minutes of timed
+// study }, cards: answered, words: essay words recalled }
+function dayLog() {
+  return (store.days ||= {})[today()] ||= {};
+}
+
+function bump(what, n = 1) {
+  const d = dayLog();
+  d[what] = (d[what] || 0) + n;
+}
+
+function logStudy(subject, mins) {
+  if (mins < 1) return;
+  const m = dayLog().min ||= {};
+  m[subject || 'Other'] = (m[subject || 'Other'] || 0) + mins;
+  saveStore();
+}
+
+// Every subject named anywhere, to suggest wherever one is asked for
+function fillSubjects() {
+  const all = [store.essays, store.decks, store.exams, store.papers].flatMap(list => (list || []).map(x => x.subject));
+  subjectList.textContent = '';
+  [...new Set(all.filter(Boolean))].sort().forEach(s => subjectList.append(el('option', { value: s })));
 }
 
 /* ---------- comparing two word lists ---------- */
@@ -997,6 +1233,51 @@ function upgradeTitles(rec) {
   rec.titles = defaultTitles(secs.length, found.names, found.sides);
 }
 
+/* ---------- pages ---------- */
+
+// The top-level pages. Essays is drawn in this file; the others add themselves from study.js.
+const pages = { essays: showSetup };
+let current = '';  // the page showing: a key of pages, or 'essay' while an essay is open
+
+function showPage(page) {
+  current = page;
+  const id = page === 'essay' ? 'work' : page === 'essays' ? 'setup' : page;
+  document.querySelectorAll('.page').forEach(s => { s.hidden = s.id !== id; });
+  nav.hidden = backupBox.hidden = page === 'essay';
+  nav.querySelectorAll('a').forEach(a => a.classList.toggle('on', a.hash === '#' + page));
+  fillSubjects();
+  drawBackup();
+  if (pages[page]) pages[page]();
+  window.scrollTo(0, 0);
+}
+
+// The page comes from the address, so the browser's back button moves between pages
+function route() {
+  let page = location.hash.slice(1);
+  if (page === 'essay') {
+    if (essay) return;
+    page = 'essays';
+  }
+  if (!pages[page]) page = pages.today ? 'today' : 'essays';
+  if (location.hash.slice(1) !== page) history.replaceState(null, '', '#' + page);
+  if (essay) leaveEssay();
+  showPage(page);
+}
+
+function go(page) {
+  if (location.hash.slice(1) !== page) location.hash = page;
+  route();
+}
+
+window.addEventListener('hashchange', () => { if (location.hash.slice(1) !== current) route(); });
+
+// Everything is kept only in this browser, so say how stale the safety copy is
+function drawBackup() {
+  const any = [store.essays, store.decks, store.exams, store.papers].some(list => list && list.length);
+  exportBtn.hidden = !any;
+  backupNote.textContent = !any ? '' : store.backupAt ? 'Last backup ' + daysAgo(store.backupAt) : 'Not backed up yet';
+}
+
 /* ---------- essays screen ---------- */
 
 function titleOf(rec) {
@@ -1018,8 +1299,6 @@ function daysAgo(t) {
 }
 
 function showSetup() {
-  work.hidden = true;
-  setup.hidden = false;
   renderSaved();
   intro.hidden = store.essays.length > 0;
   if (store.essays.length) closeEditor();
@@ -1028,9 +1307,6 @@ function showSetup() {
 
 function renderSaved() {
   savedList.textContent = '';
-  exportBtn.hidden = !store.essays.length;
-  // saved essays live only in this browser, so say how stale the safety copy is
-  backupNote.textContent = !store.essays.length ? '' : store.backupAt ? 'Last backup ' + daysAgo(store.backupAt) : 'Not backed up yet';
   store.essays.slice().sort((a, b) => a.num - b.num).forEach(rec => {
     const open = el('button', { className: 'link open', textContent: titleOf(rec), title: rec.text.trim().split('\n')[0] });
     open.addEventListener('click', () => openEssay(rec, false));
@@ -1044,6 +1320,7 @@ function renderSaved() {
       meta.append(dots, ' ');
     }
     meta.append([
+      rec.subject,
       wc(rec.text) + ' words',
       misses ? misses + ' missed' : '',
       rec.lastScore != null ? 'blank page ' + rec.lastScore + '%' : '',
@@ -1073,6 +1350,7 @@ function renderSaved() {
       store.essays = store.essays.filter(e => e !== rec);
       saveStore();
       showSetup();
+      drawBackup();
     }, 'danger');
     const more = el('details', { className: 'menu' }, el('summary', { className: 'btn', textContent: '···', title: 'More' }), panel);
 
@@ -1132,6 +1410,7 @@ function openEditor(rec) {
   editingId = rec ? rec.id : null;
   essayInput.value = rec ? rec.text : '';
   nameInput.value = rec && rec.title || '';
+  subjectInput.value = rec && rec.subject || '';
   detect.checked = rec ? !!rec.titles : true;
   naming.value = rec && rec.plain ? 'single' : 'text';
   namesTouched = !!(rec && rec.pair);
@@ -1199,6 +1478,7 @@ startBtn.addEventListener('click', () => {
   rec.pair = secs && secs.pair || undefined;
   rec.plain = secs && naming.value === 'single' || undefined;
   rec.title = nameInput.value.trim() || undefined;
+  rec.subject = subjectInput.value.trim() || undefined;
   // ask the browser not to clear saved essays when it tidies up storage
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   closeEditor();
@@ -1208,20 +1488,21 @@ startBtn.addEventListener('click', () => {
 exportBtn.addEventListener('click', () => {
   store.backupAt = Date.now();
   saveNow();
-  renderSaved();
-  download('essays-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify({ app: 'essay-eraser', essays: store.essays }), 'application/json');
+  drawBackup();
+  const { essays, decks, exams, papers, days } = store;
+  download('easyessay-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify({ app: 'essay-eraser', essays, decks, exams, papers, days }), 'application/json');
 });
 
 importBtn.addEventListener('click', () => importFile.click());
 
-// Merge a backup in: new essays are added, ones you already have keep whichever copy is newer
+// Merge a backup in: anything new is added, and what's already here keeps whichever copy is newer
 importFile.addEventListener('change', async () => {
   const file = importFile.files[0];
   importFile.value = '';
   if (!file) return;
-  let list;
+  let list, data;
   try {
-    const data = JSON.parse(await file.text());
+    data = JSON.parse(await file.text());
     list = Array.isArray(data) ? data : data.essays;
     if (!Array.isArray(list)) throw new Error();
   } catch (e) {
@@ -1242,17 +1523,24 @@ importFile.addEventListener('change', async () => {
       updated++;
     }
   });
+  ['decks', 'exams', 'papers'].forEach(key => (Array.isArray(data[key]) ? data[key] : []).forEach(x => {
+    if (!x || !x.id) return;
+    const mine = (store[key] ||= []).find(y => y.id === x.id);
+    if (!mine) { store[key].push(x); added++; }
+    else if ((x.updated || 0) > (mine.updated || 0)) { Object.assign(mine, x); updated++; }
+  }));
+  Object.entries(data.days || {}).forEach(([day, log]) => { (store.days ||= {})[day] ||= log; });
   numberEssays();
   saveStore();
-  showSetup();
+  route();
   alert(added || updated ? 'Restored ' + added + ' new and ' + updated + ' updated.' : 'Nothing new in that backup.');
 });
 
 // fresh: start fully covered (highlights and misses are kept)
 function openEssay(rec, fresh, practise) {
   essay = rec;
-  setup.hidden = true;
-  work.hidden = false;
+  showPage('essay');
+  if (location.hash !== '#essay') location.hash = 'essay';
   essayTitle.textContent = titleOf(rec);
   loadSynonyms();
   buildTokens(rec.text);
@@ -1292,15 +1580,17 @@ function openEssay(rec, fresh, practise) {
   if (practise) startPractise();
 }
 
-essaysBtn.addEventListener('click', () => {
+// Close the open essay, keeping where it was up to
+function leaveEssay() {
   stopLive();
   saveNow();
   essay = null;
   store.openId = null;
   saveStore();
   closeMenus();
-  showSetup();
-});
+}
+
+essaysBtn.addEventListener('click', () => go('essays'));
 
 // Which part of the work screen is showing: the essay, the blank page or the adapt drill
 function setView(v) {
@@ -1471,36 +1761,53 @@ options.addEventListener('toggle', () => {
   if (!options.open && options.contains(document.activeElement)) document.activeElement.blur();
 });
 
-// Timed write: a countdown for writing the essay out by hand under exam conditions
-function updateTimer() {
-  const end = store.timerEnd;
-  timerEl.hidden = !end;
-  timerBtn.textContent = end ? 'Stop' : 'Start';
-  if (!end) return;
-  const left = Math.ceil((end - Date.now()) / 1000);
-  if (left <= 0 && !store.timerRang) {
-    store.timerRang = true;
-    saveStore();
-    [0, 350, 700].forEach(d => setTimeout(beep, d));
-  }
-  timerEl.classList.toggle('up', left <= 0);
-  timerEl.textContent = left <= 0 ? "Time's up" : Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
-}
+// One countdown for the whole app: a timed write, a past paper or a plain block of study.
+// When it ends, or is stopped early, its minutes go into the day's log under its subject.
+let onTick = null;  // lets the Today page redraw its own timer
 
-function setTimer(end) {
-  store.timerEnd = end;
-  store.timerRang = false;
+function startFocus(mins, subject) {
+  store.focus = { start: Date.now(), end: Date.now() + mins * 60000, subject: subject || '' };
   saveStore();
   updateTimer();
 }
 
+function stopFocus() {
+  const f = store.focus;
+  if (!f) return;
+  if (!f.logged) logStudy(f.subject, Math.round((Date.now() - f.start) / 60000));
+  store.focus = null;
+  saveStore();
+  updateTimer();
+}
+
+function updateTimer() {
+  const f = store.focus;
+  const left = f ? Math.ceil((f.end - Date.now()) / 1000) : 0;
+  if (f && left <= 0 && !f.logged) {
+    f.logged = true;
+    logStudy(f.subject, Math.round((f.end - f.start) / 60000));
+    [0, 350, 700].forEach(d => setTimeout(beep, d));
+  }
+  const text = !f ? '' : left <= 0 ? "Time's up" : Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
+  [timerEl, focusChip].forEach(b => {
+    b.hidden = !f;
+    b.classList.toggle('up', !!f && left <= 0);
+  });
+  timerEl.textContent = text;
+  focusChip.textContent = (f && f.subject ? f.subject + ' · ' : '') + text;
+  timerBtn.textContent = f ? 'Stop' : 'Start';
+  if (onTick) onTick();
+}
+
+// Timed write: the essay's own way in to the timer, for writing it out under exam conditions
 timerBtn.addEventListener('click', () => {
-  setTimer(store.timerEnd ? null : Date.now() + opts.timerMins * 60000);
+  store.focus ? stopFocus() : startFocus(opts.timerMins, essay && essay.subject);
   options.open = false;
 });
 timerEl.addEventListener('click', () => {
-  if (Date.now() >= store.timerEnd || confirm('Stop the timer?')) setTimer(null);
+  if (Date.now() >= store.focus.end || confirm('Stop the timer?')) stopFocus();
 });
+focusChip.addEventListener('click', () => go('today'));
 setInterval(updateTimer, 500);
 
 /* ---------- tokenising ---------- */
@@ -1514,7 +1821,9 @@ const ABBREVIATIONS = new Set([
 // Little words that carry no meaning on their own: last to be hidden
 const STOP = new Set(('a an the and or but of to in on at by for with from as is are was were be been being it its this that these those ' +
   'he she they we you i his her their our your not no so than then there which who whom whose what when where how if into through ' +
-  'over under also both each such can could will would shall should may might must do does did has have had').split(' '));
+  'over under also both each such can could will would shall should may might must do does did has have had ' +
+  'about above across after against along among around before behind below between beyond during near off onto out past toward ' +
+  'towards until up upon via within without while any all some most more less few many much other another him them us me my').split(' '));
 
 // Does `word` end a sentence, given the word after it on the same line?
 function endsSentence(word, next) {
@@ -2131,6 +2440,7 @@ function revealWord(n) {
 // A word has been answered: show it, score it and move on. A right answer clears an earlier miss.
 function resolve(n, ok, near) {
   ok ? right[n]++ : wrong[n]++;
+  bump('words');
   dirty = true;
   retry = -1;
   if (!ok && ladder && ladder.drill) ladder.drill.wrong.add(n);
@@ -2431,6 +2741,7 @@ function grade(text, lo, hi) {
     setMissed(i, !good);
   }
   endAction(hi);
+  bump('words', total);
   dirty = true;
   const attempt = el('div', { className: 'attempt' });
   shown.forEach((tok, t) => attempt.append(extra.has(t) ? el('s', { textContent: tok }) : tok, ' '));
@@ -2820,6 +3131,31 @@ ankiBtn.addEventListener('click', () => {
     '#separator:tab\n#html:false\n#notetype:Cloze\n' + lines.join('\n') + '\n', 'text/plain');
 });
 
+// A card per quote in a deck of its own: the sentence with the quote blanked, and the quote as the answer
+quoteCardsBtn.addEventListener('click', () => {
+  options.open = false;
+  if (!quotes.length) return alert(NO_QUOTES);
+  const name = titleOf(essay) + ' quotes';
+  const decks = store.decks ||= [];
+  let deck = decks.find(d => d.name === name);
+  if (!deck) decks.push(deck = { id: newId(), name, subject: essay.subject, cards: [] });
+  const text = (lo, hi) => words.slice(lo, hi + 1).map(w => w.tok).join(' ');
+  let added = 0;
+  quotes.forEach(q => {
+    const a = sentenceOf(q.lo)[0], b = sentenceOf(q.hi).pop();
+    const f = [text(a, q.lo - 1), '_____', text(q.hi + 1, b)].filter(Boolean).join(' ');
+    if (deck.cards.some(c => c.f === f)) return;
+    deck.cards.push({ f, b: text(q.lo, q.hi).replace(/^[(\[]*["“‘']|["”’'][.,;:!?)\]—–-]*$/g, '') });
+    added++;
+  });
+  deck.updated = Date.now();
+  saveStore();
+  fillBar(banner, added ? added + ' quote cards are in the deck "' + name + '".' : 'The deck "' + name + '" already has every quote.', [
+    ['Study them', () => { go('cards'); startStudy(deck); }, 'primary'],
+    ['Close', () => { banner.hidden = true; }, 'link']
+  ]);
+});
+
 /* ---------- recite aloud: the microphone reveals words as you say them ---------- */
 
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -3085,17 +3421,26 @@ modes.addEventListener('click', (e) => {
 
 /* ---------- start ---------- */
 
-numberEssays();  // essays saved before numbering existed
-store.essays.forEach(upgradeTitles);
-applyOpts();
-updateTimer();
-const reopen = store.essays.find(e => e.id === store.openId);
-if (reopen) openEssay(reopen, false);
-else showSetup();
+// Called once study.js has added its pages
+function start() {
+  numberEssays();  // essays saved before numbering existed
+  store.essays.forEach(upgradeTitles);
+  delete store.timerEnd;  // the old essay-only timer
+  delete store.timerRang;
+  const old = today() - 200;
+  Object.keys(store.days || {}).forEach(d => { if (+d < old) delete store.days[d]; });
+  applyOpts();
+  updateTimer();
+  const reopen = store.essays.find(e => e.id === store.openId);
+  if (reopen) openEssay(reopen, false);
+  else route();
+}
 
 // Installed to the home screen, the app opens with no connection
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
+<script src="study.js"></script>
+<script>start();</script>
 
 </body>
 </html>

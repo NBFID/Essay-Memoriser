@@ -1,6 +1,6 @@
 // Network first, so an update shows up on the next load; the cached copy is only for when there's no connection.
-const CACHE = 'easyessay-v1';
-const SHELL = ['./', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
+const CACHE = 'easyessay-v2';
+const SHELL = ['./', 'study.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
@@ -8,7 +8,8 @@ self.addEventListener('install', (e) => {
 });
 
 self.addEventListener('activate', (e) => {
-  e.waitUntil(self.clients.claim());
+  // drop the copies an older version kept
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 
 self.addEventListener('fetch', (e) => {

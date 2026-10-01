@@ -1,7 +1,7 @@
 {
   "name": "EasyEssay",
   "short_name": "EasyEssay",
-  "description": "Memorise essays by hiding them a bit at a time.",
+  "description": "Memorise essays, drill flashcards and count down to exams.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#f6f6f4",

@@ -95,6 +95,7 @@ const EXTRA = [
   // everyday swaps
   'idea notion concept thought belief',
   'sad unhappy sorrowful miserable',
+  'illness disease sickness disorder',
   'clear obvious evident apparent',
   'important significant crucial vital key essential',
   'however yet nevertheless nonetheless but though although',
