@@ -482,7 +482,7 @@
             </select> % each time</div>
             <div class="head">Practise</div>
             <div class="line">Learn <select id="chunkSel">
-              <option value="30">about 30 words</option>
+              <option value="1">a sentence</option>
               <option value="50">about 50 words</option>
               <option value="80">about 80 words</option>
               <option value="0">a whole paragraph</option>
@@ -576,7 +576,7 @@
 const PALETTE = ['rgba(255,0,0,0.45)', 'rgba(0,120,255,0.45)', 'rgba(255,235,0,0.55)', 'rgba(0,190,0,0.45)', 'rgba(255,140,0,0.5)', 'rgba(155,0,200,0.45)'];
 const COLOUR_NAMES = ['Red', 'Blue', 'Yellow', 'Green', 'Orange', 'Purple'];
 const STORE_KEY = 'essay-eraser';
-const DEFAULT_OPTS = { hints: false, typing: false, count: false, lines: true, help: true, heat: false, eraseStep: 20, chunk: 50, timerMins: 40, colour: 2, rate: 1, sayAnswers: true };
+const DEFAULT_OPTS = { hints: false, typing: false, count: false, lines: true, help: true, heat: false, eraseStep: 20, part: 1, timerMins: 40, colour: 2, rate: 1, sayAnswers: true };
 
 const setup = document.getElementById('setup');
 const work = document.getElementById('work');
@@ -1343,7 +1343,7 @@ function applyOpts() {
   if (!opts.typing) typed = '';
   document.querySelectorAll('[data-opt]').forEach(c => { c.checked = !!opts[c.dataset.opt]; });
   eraseStep.value = opts.eraseStep;
-  chunkSel.value = opts.chunk;
+  chunkSel.value = opts.part;
   timerMins.value = opts.timerMins;
   const c = PALETTE[opts.colour] || PALETTE[0];
   hlDot.style.background = `linear-gradient(${c}, ${c}), #fff`;  // the colour as it looks on the page
@@ -1363,7 +1363,7 @@ document.querySelectorAll('[data-opt]').forEach(c => {
 eraseStep.addEventListener('change', () => setOpt('eraseStep', +eraseStep.value));
 // a new part size re-cuts the essay; mastered paragraphs stay mastered
 chunkSel.addEventListener('change', () => {
-  setOpt('chunk', +chunkSel.value);
+  setOpt('part', +chunkSel.value);
   if (!essay) return;
   if (ladder) exitPractise();
   buildUnits();
@@ -2278,9 +2278,12 @@ const MASTERED = STEPS.length;
 const PASS = 90;  // % of a part to get right on the blank page
 const JOIN = 3;   // a whole paragraph starts this far up: its parts are already learned
 
-// How much to take on at a time. A paragraph is cut at sentence ends into even parts of about
-// opts.chunk words (one up to half as long again stays whole). Once its parts are learned,
-// the whole paragraph comes back to be joined up.
+const SHORT = 15;  // words: a sentence shorter than this is learned along with its neighbour
+
+// How much to take on at a time: one sentence, with a short sentence joined to the one after it
+// (or, at the end of a paragraph, to the one before). opts.part can instead ask for even parts of
+// about that many words, still cut only at sentence ends, or 0 for whole paragraphs.
+// Once its parts are learned, the whole paragraph comes back to be joined up.
 function buildUnits() {
   units = [];
   paras.forEach((pp, p) => {
@@ -2291,26 +2294,34 @@ function buildUnits() {
       else sents.push({ lo: i, hi: i, n: 0 });
       if (words[i].key) sents[sents.length - 1].n++;
     }
-    const total = sents.reduce((a, s) => a + s.n, 0);
-    const k = !opts.chunk || total <= opts.chunk * 1.5 ? 1 : Math.min(sents.length, Math.round(total / opts.chunk));
-    let lo = pp.lo, run = 0, part = 0;
-    sents.forEach((s, j) => {
-      run += s.n;
-      const next = sents[j + 1], cuts = k - 1 - part;
-      if (!next || !cuts) return;
-      // cut here if the next sentence would overshoot an even share, or there's only one sentence left per part
-      if (sents.length - 1 - j === cuts || run + next.n / 2 >= total * (part + 1) / k) {
-        units.push({ p, lo, hi: s.hi, part, of: k });
-        lo = next.lo;
-        part++;
-      }
-    });
-    units.push({ p, lo, hi: pp.hi, part, of: k });
-    if (k > 1) units.push({ p, lo: pp.lo, hi: pp.hi, of: k, whole: true });
+    const parts = [];
+    if (opts.part === 1) {
+      sents.forEach(s => {
+        const last = parts[parts.length - 1];
+        if (last && last.n < SHORT) { last.hi = s.hi; last.n += s.n; }
+        else parts.push({ ...s });
+      });
+      const end = parts[parts.length - 1];
+      if (parts.length > 1 && end.n < SHORT) { parts.pop(); parts[parts.length - 1].hi = end.hi; }
+    } else {
+      const total = sents.reduce((a, s) => a + s.n, 0);
+      const k = !opts.part || total <= opts.part * 1.5 ? 1 : Math.min(sents.length, Math.round(total / opts.part));
+      let cur = null, run = 0;
+      sents.forEach((s, j) => {
+        if (cur) cur.hi = s.hi;
+        else parts.push(cur = { lo: s.lo, hi: s.hi });
+        run += s.n;
+        const next = sents[j + 1], cuts = k - parts.length;
+        // cut here if the next sentence would overshoot an even share, or there's only one sentence left per part
+        if (next && cuts > 0 && (sents.length - 1 - j === cuts || run + next.n / 2 >= total * parts.length / k)) cur = null;
+      });
+    }
+    parts.forEach((g, i) => units.push({ p, lo: g.lo, hi: g.hi, part: i, of: parts.length }));
+    if (parts.length > 1) units.push({ p, lo: pp.lo, hi: pp.hi, of: parts.length, whole: true });
   });
 }
 
-const unitsKey = () => (opts.chunk || 0) + ':' + units.length;
+const unitsKey = () => opts.part + ':' + units.length;
 const unitsOf = p => units.map((u, k) => u.p === p ? k : -1).filter(k => k >= 0);
 const firstStep = u => u.whole ? JOIN : 0;
 
