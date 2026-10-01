@@ -392,6 +392,10 @@
   #focusSel { max-width: 15em; text-overflow: ellipsis; }
   /* a Practise session hides and reveals for you, and its message says what to do */
   #work.practising .free, #work.practising #help { display: none; }
+  /* answers are being typed: stepping buttons make way for the text box */
+  #work.typed #stepBar .say { display: none; }
+  .note label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+  .note label select { padding: 3px 6px; font-size: 13px; color: var(--ink); }
   @media (max-width: 700px) {
     #focusSel { order: -2; flex: 1; max-width: none; }
     #tools .undo { order: -1; }
@@ -525,7 +529,7 @@
   <div id="live" class="note" hidden></div>
   <div id="help">
     Tap a word to reveal or hide it · drag across text for a whole stretch · double-tap for its sentence · right-click or long-press marks it missed<span class="keys"> ·
-    Space next word · Enter next sentence · ←&nbsp;step back</span><span id="typingHelp"> · type the next word then Space to check it</span>
+    Space next word · Enter next sentence · ←&nbsp;step back</span><span id="typingHelp"> · type the next word then Space to check it · Tab shows it</span>
     · <button id="hideHelp" class="link">hide</button>
   </div>
 
@@ -563,10 +567,11 @@
   </div>
 
   <div id="stepBar">
-    <button id="backStep" class="btn">← Back</button>
+    <button id="backStep" class="btn say">← Back</button>
     <input type="text" id="typeIn" placeholder="Type the next word" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" hidden>
-    <button id="wordStep" class="btn">Word</button>
-    <button id="sentStep" class="btn">Sentence</button>
+    <button id="giveUp" class="btn" hidden>Show word</button>
+    <button id="wordStep" class="btn say">Word</button>
+    <button id="sentStep" class="btn say">Sentence</button>
   </div>
 </div>
 
@@ -576,7 +581,7 @@
 const PALETTE = ['rgba(255,0,0,0.45)', 'rgba(0,120,255,0.45)', 'rgba(255,235,0,0.55)', 'rgba(0,190,0,0.45)', 'rgba(255,140,0,0.5)', 'rgba(155,0,200,0.45)'];
 const COLOUR_NAMES = ['Red', 'Blue', 'Yellow', 'Green', 'Orange', 'Purple'];
 const STORE_KEY = 'essay-eraser';
-const DEFAULT_OPTS = { hints: false, typing: false, count: false, lines: true, help: true, heat: false, eraseStep: 20, part: 1, timerMins: 40, colour: 2, rate: 1, sayAnswers: true };
+const DEFAULT_OPTS = { hints: false, typing: false, count: false, lines: true, help: true, heat: false, eraseStep: 20, part: 1, timerMins: 40, colour: 2, rate: 1, sayAnswers: true, answer: 'words' };
 
 const setup = document.getElementById('setup');
 const work = document.getElementById('work');
@@ -649,6 +654,7 @@ const nameInput = document.getElementById('nameInput');
 const backupNote = document.getElementById('backupNote');
 const focusSel = document.getElementById('focusSel');
 const chunkSel = document.getElementById('chunkSel');
+const giveUpBtn = document.getElementById('giveUp');
 
 // Saved in localStorage: { essays: [{ id, num, title, text, titles, pair, covered, hl, missed, right, wrong,
 // ladder, draft, questions, cursor, updated }], openId, opts, timerEnd }
@@ -682,8 +688,10 @@ let lastTap = null;
 let dirty = false;     // something was practised since the last save
 let view = 'essay';    // 'essay' | 'blank' | 'adapt'
 let scope = null;      // { p, lo, hi } when only one paragraph, or part of one, is on screen
-let ladder = null;     // { u } while a Practise session is running: the unit being worked on
+let ladder = null;     // while a Practise session is running: { unit, k, drill, go, fails, slipped, skipped }
 let forceHints = false;
+let retry = -1;        // the word that has had one wrong answer and gets one more go
+let wrongFlash = -1;   // the hidden word flashing red after a wrong answer
 
 // Layout, measured from the DOM
 let rows = [];         // rows[r] = [{ x0, x1, i }] hit boxes on text line r (i = -1 for gaps)
@@ -770,22 +778,41 @@ function lcsPairs(a, b, eq) {
   return head.concat(mid.reverse(), tail.reverse());
 }
 
+// Edit distance in which swapping two neighbouring letters is one slip, like any other typo
 function editDistance(a, b) {
-  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
-  for (let i = 1; i <= a.length; i++) {
-    const cur = [i];
+  const d = [];
+  for (let i = 0; i <= a.length; i++) {
+    d[i] = [i];
     for (let j = 1; j <= b.length; j++) {
-      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (!i) { d[0][j] = j; continue; }
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
     }
-    prev = cur;
   }
-  return prev[b.length];
+  return d[a.length][b.length];
 }
 
-// Same word, forgiving one typo in a longer word
+// A word with its ending taken off: "explores", "explored" and "exploring" are all "explor"
+const stems = new Map();
+function stem(w) {
+  let s = stems.get(w);
+  if (s === undefined) {
+    const m = w.length > 4 && w.match(/^(.{3,}?)(ations?|ings?|ies|ied|ed|es|ly|s|e|y)$/);
+    stems.set(w, s = m ? m[1] : w);
+  }
+  return s;
+}
+
+// Is the guess the word? Typos are forgiven in proportion to the word's length (one slip in a
+// short word, up to three in a long one), and so is a different ending or a near-identical word.
+// A one- or two-letter word has to be exact.
 function sameWord(g, key) {
   if (g === key) return true;
-  return key.length >= 5 && Math.abs(g.length - key.length) <= 1 && editDistance(g, key) <= 1;
+  if (!g || key.length < 3) return false;
+  const slips = key.length <= 4 ? 1 : key.length <= 7 ? 2 : 3;
+  if (Math.abs(g.length - key.length) <= slips && editDistance(g, key) <= slips) return true;
+  const a = stem(g), b = stem(key);
+  return a.length >= 3 && (a === b || (b.length >= 5 && Math.abs(a.length - b.length) <= 1 && editDistance(a, b) <= 1));
 }
 
 /* ---------- finding the paragraphs in pasted text ---------- */
@@ -959,6 +986,7 @@ function renderSaved() {
     open.addEventListener('click', () => openEssay(rec, false));
 
     const misses = (rec.missed || '').split('1').length - 1;
+    const due = Object.entries(rec.review || {}).filter(([p, r]) => rec.ladder && rec.ladder[p] >= MASTERED && r.due <= today()).length;
     const meta = el('span', { className: 'muted meta' });
     if (Array.isArray(rec.ladder)) {
       const dots = el('span', { className: 'dots', title: rec.ladder.filter(s => s >= MASTERED).length + ' of ' + rec.ladder.length + ' paragraphs mastered' });
@@ -969,6 +997,7 @@ function renderSaved() {
       wc(rec.text) + ' words',
       misses ? misses + ' missed' : '',
       rec.lastScore != null ? 'blank page ' + rec.lastScore + '%' : '',
+      due ? due + ' to review' : '',
       rec.updated ? 'practised ' + daysAgo(rec.updated) : ''
     ].filter(Boolean).join(' · '));
 
@@ -1257,11 +1286,9 @@ function fillFocus() {
 function focusPara(p) {
   if (ladder) {
     if (p == null) return exitPractise();
-    // its first part still to learn; if there is none, the paragraph itself, to look over
-    const ks = unitsOf(p), k = ks.find(k => essay.steps[k] < MASTERED);
-    ladder.u = k ?? ks[ks.length - 1];
-    ladder.picked = k == null;
-    return presentStep();
+    // the first thing in it still to learn; if it's all learned, review it
+    const k = unitsOf(p).find(k => !isDone(k));
+    return k == null ? runUnit(reviewUnit(p), -1) : runUnit(units[k], k);
   }
   const was = scope;
   banner.hidden = true;
@@ -1275,22 +1302,29 @@ focusSel.addEventListener('change', () => focusPara(focusSel.value === '' ? null
 function setPractising(on) {
   practiseBtn.textContent = on ? 'Exit practice' : 'Practise';
   work.classList.toggle('practising', on);
+  syncInput();
 }
 
-// Each heading says how far up the ladder its paragraph is
+// The text box (for touch keyboards) shows whenever answers are typed
+function syncInput() {
+  const typedDrill = !!ladder && opts.answer !== 'say';
+  work.classList.toggle('typed', typedDrill);
+  giveUpBtn.hidden = !typedDrill;
+  typeIn.hidden = !(typedDrill || (!ladder && opts.typing));
+  typeIn.placeholder = typedDrill && opts.answer === 'letters' ? 'First letter of each word' : 'Type the next word';
+}
+
+// Each heading says how far along its paragraph is
 function paintHeads() {
   const fresh = Array.isArray(essay.steps) && essay.stepsKey === unitsKey();
   paras.forEach((pp, p) => {
     if (!pp.head) return;
     pp.head.textContent = paraName(p);
     if (!fresh) return;
-    const ks = unitsOf(p), st = k => essay.steps[k];
-    const parts = ks.filter(k => !units[k].whole), done = parts.filter(k => st(k) >= MASTERED).length;
-    let note = '';
-    if (ks.every(k => st(k) >= MASTERED)) note = 'mastered';
-    else if (parts.length === 1) note = st(ks[0]) ? 'step ' + (st(ks[0]) + 1) + ' of ' + STEPS.length : '';
-    else if (done === parts.length) note = 'joining the parts';
-    else if (done || parts.some(k => st(k))) note = 'part ' + (done + 1) + ' of ' + parts.length;
+    const ks = unitsOf(p);
+    const at = ks.reduce((a, k) => a + essay.steps[k], 0), of = ks.reduce((a, k) => a + STAGES[units[k].kind].length, 0);
+    const r = essay.review && essay.review[p];
+    const note = at >= of ? (r && r.due <= today() ? 'review due' : 'learned') : at ? Math.round(100 * at / of) + '%' : '';
     if (note) pp.head.append(el('small', { textContent: ' · ' + note }));
   });
 }
@@ -1307,17 +1341,17 @@ function range() {
 }
 
 // A message strip: some text, then buttons as [label, action, 'primary' | 'link' | undefined]
-// text can be { title, step, text } for a message with a heading and the ladder's step marker
+// text can be { title, steps, step, tail, text } for a message with a heading and a stage marker
 function fillBar(bar, text, buttons = [], extra) {
   bar.textContent = '';
   const msg = el('span', { className: 'msg' });
   if (typeof text === 'string') msg.textContent = text;
   else {
     msg.append(el('b', { textContent: text.title }));
-    if (text.step != null) {
+    if (text.steps) {
       const steps = el('span', { className: 'steps' });
-      STEPS.forEach((_, k) => steps.append(el('i', { className: k <= text.step ? 'on' : '' })));
-      steps.append(el('em', { textContent: 'Step ' + (text.step + 1) + ' of ' + STEPS.length + ': ' + STEPS[text.step] + (text.tail ? '  ·  ' + text.tail : '') }));
+      if (text.steps.length > 1) text.steps.forEach((_, k) => steps.append(el('i', { className: k <= text.step ? 'on' : '' })));
+      steps.append(el('em', { textContent: text.steps[text.step] + (text.tail ? ' · ' + text.tail : '') }));
       msg.append(steps);
     }
     if (text.text) msg.append(el('span', { textContent: text.text }));
@@ -1337,7 +1371,7 @@ function fillBar(bar, text, buttons = [], extra) {
 function applyOpts() {
   help.hidden = !opts.help || view !== 'essay';
   typingHelp.hidden = !opts.typing;
-  typeIn.hidden = !opts.typing;
+  syncInput();
   statusEl.hidden = !opts.count;
   eraseBtn.textContent = 'Hide ' + opts.eraseStep + '%';
   if (!opts.typing) typed = '';
@@ -1611,6 +1645,10 @@ function render() {
   const n = talk ? (seg ? seg.a : -1) : stepping || typed ? nextCovered() : -1;
   const b = n >= 0 && words[n].boxes[0];
   if (b) {
+    if (wrongFlash === n) {
+      ctx.fillStyle = '#d32f2f';
+      fillBox(b);
+    }
     // what you've typed so far, written into the blank it's answering
     if (typed) {
       ctx.fillStyle = COVER;
@@ -1892,6 +1930,12 @@ function tap(x, y) {
   const i = wordAt(x, y);
   const now = performance.now();
   if (i < 0) { lastTap = null; return; }
+  // in a marked recall, tapping a hidden word is asking to be shown it
+  if (ladder && ladder.drill && opts.answer !== 'say' && pen === 'cover' && covered[i] && words[i].key) {
+    lastTap = null;
+    clearTyped();
+    return resolve(i, false);
+  }
   if (lastTap && lastTap.i === i && lastTap.pen === pen && now - lastTap.t < 400) {
     // Double tap: spread what the first tap did over the whole sentence, as the same undo step
     beginAction(false);
@@ -1997,6 +2041,7 @@ stage.addEventListener('pointerup', (e) => {
   const wasTap = !g.sweeping;
   endGesture(g, true);
   if (wasTap) tap(g.x, g.y);
+  if (ladder && ladder.drill && nextCovered() < 0) finishDrill();
 });
 
 // The browser took the gesture over (a finger scroll): drop whatever it painted
@@ -2031,17 +2076,12 @@ function revealWord(n) {
   for (let j = n + 1; j < words.length && covered[j] && !words[j].key; j++) setCovered(j, false);
 }
 
-// Type to check: reveal the word either way; a wrong answer marks it missed,
-// a right one clears an earlier miss
-function checkTyped() {
-  const guess = typed;
-  typed = '';
-  typeIn.value = '';
-  const n = nextCovered();
-  if (n < 0) return draw();
-  const ok = sameWord(normalise(guess), words[n].key);
+// A word has been answered: show it, score it and move on. A right answer clears an earlier miss.
+function resolve(n, ok) {
   ok ? right[n]++ : wrong[n]++;
   dirty = true;
+  retry = -1;
+  if (!ok && ladder && ladder.drill) ladder.drill.wrong.add(n);
   beginAction();
   revealWord(n);
   setMissed(n, !ok);
@@ -2049,6 +2089,68 @@ function checkTyped() {
   flash(n, ok);
   afterStep();
 }
+
+// A wrong answer gets one more go before the word is shown
+function wrongTry(n) {
+  if (retry === n) return resolve(n, false);
+  retry = n;
+  wrongFlash = n;
+  setTimeout(() => { wrongFlash = -1; draw(); }, 450);
+  stepping = true;
+  draw();
+}
+
+// The hidden word after n
+function nextAfter(n) {
+  const [, hi] = range();
+  for (let i = n + 1; i <= hi; i++) if (covered[i] && words[i].key) return i;
+  return -1;
+}
+
+// Whole-word answers: what's been typed is checked against the next hidden word
+function checkTyped() {
+  const guess = typed, g = normalise(guess);
+  const n = nextCovered();
+  if (n < 0 || !g) return clearTyped();
+  const key = words[n].key;
+  // "self-knowledge" typed as two words: the space after "self" isn't the end of the answer
+  const parts = subKeys(words[n].tok);
+  if (parts.length > 1 && g.length < key.length) {
+    let cut = 0;
+    if (parts.slice(0, -1).some(part => (cut += part.length) === g.length) && sameWord(g, key.slice(0, g.length))) {
+      typed = guess + '-';
+      typeIn.value = typed;
+      return draw();
+    }
+  }
+  typed = '';
+  typeIn.value = '';
+  if (sameWord(g, key)) return resolve(n, true);
+  // it's the word after: the one in between was left out
+  const n2 = nextAfter(n);
+  if (n2 >= 0 && words[n2].key.length >= 4 && sameWord(g, words[n2].key)) {
+    resolve(n, false);
+    return resolve(n2, true);
+  }
+  wrongTry(n);
+}
+
+// First-letter answers: one key per hidden word
+function letterKey(c) {
+  const n = nextCovered(), g = normalise(c);
+  if (n < 0 || !g) return;
+  g === words[n].key[0] ? resolve(n, true) : wrongTry(n);
+}
+
+// Stuck: show the word and count it as missed
+function giveUp() {
+  const n = nextCovered();
+  if (n < 0) return;
+  clearTyped();
+  resolve(n, false);
+}
+
+giveUpBtn.addEventListener('click', giveUp);
 
 function stepWord() {
   const n = nextCovered();
@@ -2090,7 +2192,11 @@ function afterStep() {
   stepping = true;
   const n = nextCovered();
   scrollToWord(n);
-  if (n >= 0 || ladder || mic) return;
+  if (ladder) {
+    if (n < 0 && ladder.drill) finishDrill();
+    return;
+  }
+  if (n >= 0 || mic) return;
   // nothing left to reveal: offer the next thing to do
   fillBar(banner, scope ? "That's the whole paragraph." : "That's the whole essay.", [
     ['Hide ' + opts.eraseStep + '% and go again', () => eraseBtn.click(), 'primary'],
@@ -2129,17 +2235,24 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   if (mod || (e.altKey && !e.ctrlKey)) return;
+  const drill = ladder && ladder.drill;
+  const mode = drill ? opts.answer : opts.typing ? 'words' : 'say';  // how hidden words get answered
+  const go = ladder && ladder.go;                                    // the practise message's main button
   let fn;
   if (e.key.length === 1 && e.key !== ' ') {
-    if (!opts.typing) return;
-    fn = () => typeChar(e.key);
+    if (mode === 'say') return;
+    fn = mode === 'letters' ? () => letterKey(e.key) : () => typeChar(e.key);
   } else fn = {
-    ' ': () => typed ? checkTyped() : stepWord(),
-    'Enter': () => typed ? checkTyped() : stepSentence(),
-    'ArrowRight': stepWord,
-    'ArrowLeft': stepBack,
-    'Backspace': () => { if (typed) { typed = typed.slice(0, -1); draw(); } else stepBack(); },
-    'Escape': () => { if (typed) { typed = ''; draw(); } else selectPen('cover'); }
+    ' ': () => typed ? checkTyped() : go ? go() : mode === 'say' || !drill ? stepWord() : 0,
+    'Enter': () => typed ? checkTyped() : go ? go() : mode === 'say' || !drill ? stepSentence() : 0,
+    'Tab': mode === 'say' ? undefined : giveUp,
+    'ArrowRight': drill && mode !== 'say' ? giveUp : stepWord,
+    'ArrowLeft': drill ? undefined : stepBack,
+    'Backspace': () => {
+      if (typed) { typed = typed.slice(0, -1); typeIn.value = typed; draw(); }
+      else if (!drill) stepBack();
+    },
+    'Escape': () => { if (typed) clearTyped(); else selectPen('cover'); }
   }[e.key];
   if (!fn) return;
   e.preventDefault();
@@ -2155,14 +2268,28 @@ document.getElementById('sentStep').addEventListener('click', stepSentence);
 
 typeIn.addEventListener('input', () => {
   const v = typeIn.value;
+  if (ladder && ladder.drill && opts.answer === 'letters') {
+    typeIn.value = '';
+    stepping = true;
+    return [...v].forEach(letterKey);
+  }
   typed = v.trim();
-  if (/\s$/.test(v)) typed ? checkTyped() : (typeIn.value = '', stepWord());
-  else { stepping = true; draw(); }
+  if (!/\s$/.test(v)) { stepping = true; return draw(); }
+  if (typed) return checkTyped();
+  typeIn.value = '';
+  if (!ladder) stepWord();
+  else if (ladder.go) ladder.go();
 });
 typeIn.addEventListener('keydown', (e) => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    return giveUp();
+  }
   if (e.key !== 'Enter') return;
   e.preventDefault();
-  typed ? checkTyped() : stepWord();
+  if (typed) checkTyped();
+  else if (!ladder) stepWord();
+  else if (ladder.go) ladder.go();
 });
 
 /* ---------- blank page: write it from memory, then check ---------- */
@@ -2172,8 +2299,6 @@ function blankTargets() {
   const t = [{ id: 'all', label: 'the whole essay', lo: 0, hi: words.length - 1 }];
   if (paras.length < 2) return t;
   paras.forEach((pp, p) => t.push({ id: 'p' + p, label: paraName(p), lo: pp.lo, hi: pp.hi }));
-  const u = ladder && units[ladder.u];
-  if (u && u.of > 1 && !u.whole) t.push({ id: 'u' + ladder.u, label: unitName(u), lo: u.lo, hi: u.hi });
   // "Tempest BP1" then "Hag-Seed BP1" are one paragraph in the exam
   const bp = p => paraName(p).match(/^(.+) BP(\d+)$/) || [];
   for (let p = 0; p + 1 < paras.length; p++) {
@@ -2259,31 +2384,34 @@ blankCheck.addEventListener('click', () => {
   delete essay.draft;
   setView('essay');
   const said = `You recalled ${r.ok} of ${r.total} words (${r.pct}%).`;
-  if (ladder) ladderResult(r, said);
-  else {
-    fillBar(banner, said + (r.ok < r.total ? ' The words you dropped are in red.' : ''), [
-      ['Try again', () => openBlank(t.id)],
-      ['Close', () => { banner.hidden = true; }, 'link']
-    ], r.attempt);
-    scrollToWord(t.lo);
-  }
+  fillBar(banner, said + (r.ok < r.total ? ' The words you dropped are in red.' : ''), [
+    ['Try again', () => openBlank(t.id)],
+    ['Close', () => { banner.hidden = true; }, 'link']
+  ], r.attempt);
+  scrollToWord(t.lo);
   saveNow();
 });
 
-/* ---------- practise: a ladder for each part ---------- */
+/* ---------- practise ---------- */
 
-// Each part climbs from reading it to writing it on a blank page
-const STEPS = ['Read', 'First letters', 'A third hidden', 'Two thirds hidden', 'Blank page'];
-const MASTERED = STEPS.length;
-const PASS = 90;  // % of a part to get right on the blank page
-const JOIN = 3;   // a whole paragraph starts this far up: its parts are already learned
+// Practise teaches a paragraph a part at a time (a sentence, unless Options says otherwise):
+//   learn a part: read it, recall it half hidden, recall it all hidden
+//   link it to the part before: recall the two together
+//   and once every part is in, recall the whole paragraph.
+// Recalling means answering every hidden word, so it's marked for you; nothing is self-rated
+// unless you choose to say it aloud. A learned paragraph comes back for review after a day,
+// then three days, a week, two weeks and a month.
+const STAGES = { learn: ['read', 'half', 'all'], link: ['all'], whole: ['all'], review: ['all'] };
+const STAGE_NAMES = { read: 'Read', half: 'Half hidden', all: 'All hidden' };
+const MASTERED = 5;              // essay.ladder[p] for a learned paragraph (the essays list reads it)
+const PASS = 85;                 // % of the hidden words to get right
+const GAPS = [1, 3, 7, 14, 30];  // days between reviews
+const SHORT = 15;                // words: a sentence shorter than this is learned along with its neighbour
 
-const SHORT = 15;  // words: a sentence shorter than this is learned along with its neighbour
-
-// How much to take on at a time: one sentence, with a short sentence joined to the one after it
-// (or, at the end of a paragraph, to the one before). opts.part can instead ask for even parts of
-// about that many words, still cut only at sentence ends, or 0 for whole paragraphs.
-// Once its parts are learned, the whole paragraph comes back to be joined up.
+// The parts of each paragraph and the jobs made from them, in the order they're done.
+// A part is a sentence, with a short one joined to the one after it (or, at the end of a paragraph,
+// to the one before). opts.part can instead ask for even parts of about that many words, still cut
+// only at sentence ends, or 0 for whole paragraphs.
 function buildUnits() {
   units = [];
   paras.forEach((pp, p) => {
@@ -2316,48 +2444,61 @@ function buildUnits() {
         if (next && cuts > 0 && (sents.length - 1 - j === cuts || run + next.n / 2 >= total * parts.length / k)) cur = null;
       });
     }
-    parts.forEach((g, i) => units.push({ p, lo: g.lo, hi: g.hi, part: i, of: parts.length }));
-    if (parts.length > 1) units.push({ p, lo: pp.lo, hi: pp.hi, of: parts.length, whole: true });
+    const of = parts.length;
+    parts.forEach((g, i) => {
+      units.push({ p, lo: g.lo, hi: g.hi, kind: 'learn', part: i, of });
+      if (i) units.push({ p, lo: parts[i - 1].lo, hi: g.hi, kind: 'link', part: i, of });
+    });
+    // with only two parts, linking them already was the whole paragraph
+    if (of > 2) units.push({ p, lo: pp.lo, hi: pp.hi, kind: 'whole', of });
   });
 }
 
-const unitsKey = () => opts.part + ':' + units.length;
+const unitsKey = () => 'v2:' + opts.part + ':' + units.length;
 const unitsOf = p => units.map((u, k) => u.p === p ? k : -1).filter(k => k >= 0);
-const firstStep = u => u.whole ? JOIN : 0;
+const isDone = k => essay.steps[k] >= STAGES[units[k].kind].length;
+const today = () => Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 864e5);
+const reviewUnit = p => ({ p, lo: paras[p].lo, hi: paras[p].hi, kind: 'review', of: 1 });
 
 function unitName(u) {
   const name = paraName(u.p);
-  return u.of === 1 ? name : u.whole ? name + ' · whole paragraph' : name + ' · part ' + (u.part + 1) + ' of ' + u.of;
+  if (u.kind === 'review') return name + ' · review';
+  if (u.kind === 'whole') return name + ' · the whole paragraph';
+  if (u.kind === 'link') return name + ' · parts ' + u.part + ' and ' + (u.part + 1) + ' together';
+  return u.of === 1 ? name : name + ' · part ' + (u.part + 1) + ' of ' + u.of;
 }
 
-// The blank page target for a unit
-function blankId(k) {
-  const u = units[k];
-  return u.of === 1 || u.whole ? 'p' + u.p : 'u' + k;
-}
-
-// Progress is kept per unit. If the essay has been cut differently since, start again,
-// keeping the paragraphs that were already mastered.
+// Progress is kept per job. If the essay has been cut up differently since, start again,
+// keeping the paragraphs that were already learned.
 function initSteps() {
   if (Array.isArray(essay.steps) && essay.stepsKey === unitsKey()) return;
   const old = Array.isArray(essay.ladder) && essay.ladder.length === paras.length ? essay.ladder : [];
-  essay.steps = units.map(u => old[u.p] >= MASTERED ? MASTERED : firstStep(u));
+  essay.steps = units.map(u => old[u.p] >= MASTERED ? STAGES[u.kind].length : 0);
   essay.stepsKey = unitsKey();
   syncLadder();
+  paras.forEach((_, p) => { if (essay.ladder[p] >= MASTERED && !(essay.review && essay.review[p])) schedule(p, true); });
 }
 
-// The essays list shows progress by paragraph: 0 untouched, 1 under way, MASTERED done
+// The essays list shows progress by paragraph: 0 untouched, 1 under way, MASTERED learned
 function syncLadder() {
   essay.ladder = paras.map((_, p) => {
     const ks = unitsOf(p);
-    if (ks.every(k => essay.steps[k] >= MASTERED)) return MASTERED;
-    return ks.some(k => essay.steps[k] > firstStep(units[k])) ? 1 : 0;
+    return ks.every(isDone) ? MASTERED : ks.some(k => essay.steps[k] > 0) ? 1 : 0;
   });
 }
 
+// When a paragraph is next due: further off each time it's recalled cleanly, tomorrow if it wasn't
+function schedule(p, clean) {
+  const r = (essay.review ||= {})[p] ||= { n: 0 };
+  r.n = clean ? Math.min(r.n + 1, GAPS.length) : 1;
+  r.due = today() + GAPS[r.n - 1];
+}
+
 function setStep(k, st) {
-  essay.steps[k] = Math.min(MASTERED, Math.max(0, st));
+  const p = units[k].p, was = essay.ladder[p];
+  essay.steps[k] = Math.max(0, st);
   syncLadder();
+  if (essay.ladder[p] >= MASTERED && was < MASTERED) schedule(p, true);
   dirty = true;
   saveNow();
 }
@@ -2365,109 +2506,195 @@ function setStep(k, st) {
 function startPractise() {
   stopLive();
   initSteps();
-  const k = essay.steps.findIndex(s => s < MASTERED);
-  ladder = { u: Math.max(k, 0) };
-  k < 0 ? ladderDone() : presentStep();
+  ladder = { k: -1, skipped: new Set() };
+  nextJob();
 }
 
 function exitPractise() {
   ladder = null;
   setPractising(false);
   paintHeads();
-  forceHints = false;
   banner.hidden = true;
+  clearTyped();
   setView('essay');
   setScope(null);
 }
 
-// Confident already: call it mastered and move on
+// What to do next: paragraphs due for review first, then the next thing not yet learned
+function nextJob() {
+  const due = paras.map((_, p) => p).filter(p => essay.ladder[p] >= MASTERED && essay.review && essay.review[p]
+    && essay.review[p].due <= today() && !ladder.skipped.has(p));
+  if (due.length) return runUnit(reviewUnit(due[0]), -1);
+  const n = units.length;
+  for (let j = 1; j <= n; j++) {
+    const q = (ladder.k + j + n) % n;
+    if (!isDone(q)) return runUnit(units[q], q);
+  }
+  ladderDone();
+}
+
+function runUnit(u, k) {
+  Object.assign(ladder, { unit: u, k, fails: 0, slipped: false });
+  presentStage();
+}
+
+const stageOf = () => ladder.k < 0 ? 'all' : STAGES[ladder.unit.kind][essay.steps[ladder.k]];
+
+function ladderMsg(text) {
+  const u = ladder.unit;
+  return {
+    title: unitName(u),
+    steps: STAGES[u.kind].map(s => STAGE_NAMES[s]),
+    step: ladder.k < 0 ? 0 : essay.steps[ladder.k],
+    tail: units.filter((_, k) => isDone(k)).length + ' of ' + units.length + ' done',
+    text
+  };
+}
+
+// Confident already: call it learned and move on
 function knowIt() {
-  setStep(ladder.u, MASTERED);
-  nextUnit();
+  const u = ladder.unit;
+  if (ladder.k < 0) { schedule(u.p, true); saveNow(); }
+  else setStep(ladder.k, STAGES[u.kind].length);
+  nextJob();
 }
 
-const ladderNav = () => [['I know this', knowIt], ['Skip for now', nextUnit, 'link'], ['Exit', exitPractise, 'link']];
-
-function ladderMsg(step, text) {
-  const done = essay.steps.filter(s => s >= MASTERED).length;
-  return { title: unitName(units[ladder.u]), step, text, tail: done + ' of ' + units.length + ' done' };
+function skipJob() {
+  if (ladder.k < 0) ladder.skipped.add(ladder.unit.p);
+  nextJob();
 }
 
-function moveStep(d) {
-  setStep(ladder.u, essay.steps[ladder.u] + d);
-  presentStep();
+const ladderNav = () => [['I know this', knowIt], ['Skip for now', skipJob, 'link'], ['Exit', exitPractise, 'link']];
+
+// How to answer, in the words that fit the device
+function how() {
+  const touch = matchMedia('(pointer: coarse)').matches;
+  const stuck = touch ? ' "Show word" helps when you are stuck.' : ' Tab shows a word you are stuck on.';
+  if (opts.answer === 'letters') return 'Type the first letter of each hidden word.' + stuck;
+  if (opts.answer === 'words') return 'Type each hidden word, then Space. Small slips are forgiven.' + stuck;
+  return touch ? 'Say it, tapping Word to check each one. Long-press any you got wrong.'
+    : 'Say it, pressing Space to check each word. Right-click any you got wrong.';
 }
 
-function presentStep() {
-  const k = ladder.u, u = units[k], st = essay.steps[k];
+// The three ways to answer, switchable mid-session
+function answerPicker() {
+  const pick = el('select', { title: 'How you answer the hidden words' });
+  [['words', 'typing each word'], ['letters', 'typing first letters'], ['say', 'saying it']]
+    .forEach(([v, t]) => pick.append(el('option', { value: v, textContent: t })));
+  pick.value = opts.answer;
+  pick.addEventListener('change', () => {
+    setOpt('answer', pick.value);
+    syncInput();
+    clearTyped();
+    if (ladder && ladder.drill) drillBanner();
+    pick.blur();
+  });
+  return el('label', {}, 'Answer by ', pick);
+}
+
+function drillBanner() {
+  fillBar(banner, ladderMsg(how()), ladderNav(), answerPicker());
+}
+
+// Set the job up at the stage it has reached: shown to read, or hidden to recall
+function presentStage() {
+  const u = ladder.unit, stage = stageOf();
   paintHeads();
   setPractising(true);
-  forceHints = st === 1;
   setView('essay');
   setScope(u.p, u.lo, u.hi);
   window.scrollTo(0, 0);
-  if (st >= MASTERED) {
-    if (!ladder.picked) return nextUnit();
-    // a mastered paragraph picked by hand: show it and offer the climb again
-    setRange(false);
-    fillBar(banner, { title: unitName(u) + ' · mastered', text: 'Climb it again to keep it fresh, or move on.' }, [
-      ['Climb again', () => { setStep(k, firstStep(u)); presentStep(); }, 'primary'],
-      ['Next', nextUnit],
-      ['Exit', exitPractise, 'link']
-    ]);
-    return;
-  }
-  if (st === 4) {
-    fillBar(banner, ladderMsg(st, `Write it out from memory. ${PASS}% or better and it's done.`), ladderNav());
-    openBlank(blankId(k));
-    return;
-  }
+  clearTyped();
+  retry = -1;
   beginAction();
-  for (let i = u.lo; i <= u.hi; i++) setCovered(i, st === 1);
-  if (st >= 2) {
+  for (let i = u.lo; i <= u.hi; i++) setCovered(i, stage === 'all');
+  if (stage === 'half') {
     const ids = keyed(u.lo, u.hi);
-    pickWeighted(ids, Math.round(ids.length * (st === 2 ? 1 / 3 : 2 / 3))).forEach(i => setCovered(i, true));
+    pickWeighted(ids, Math.ceil(ids.length / 2)).forEach(i => setCovered(i, true));
   }
   endAction(u.lo - 1);
-  stepping = st > 0;
-  const got = [['Got it', () => moveStep(1), 'primary'], ['Shaky', () => moveStep(-1)]];
-  const fill = u.whole ? 'Now the parts together. Recite the whole paragraph, filling the gaps.' : 'Recite it all, filling the gaps. Tap a gap to check it.';
-  if (st === 0) fillBar(banner, ladderMsg(st, 'Read it aloud twice, slowly.'), [['Next step', () => moveStep(1), 'primary'], ...ladderNav()]);
-  else if (st === 1) fillBar(banner, ladderMsg(st, 'Recite it from the first letters. Tap a word to check it and long-press or right-click any you got wrong.'), [...got, ...ladderNav()]);
-  else fillBar(banner, ladderMsg(st, fill), [...got, ...ladderNav()]);
-}
-
-function ladderResult(r, said) {
-  const k = ladder.u, u = units[k], pass = r.pct >= PASS;
-  setStep(k, pass ? MASTERED : 3);
-  paintHeads();
-  forceHints = false;
-  setScope(u.p, u.lo, u.hi);
-  fillBar(banner, { title: unitName(u) + (pass ? ' · done' : ' · not there yet'), text: said + (pass ? '' : ' The words you dropped are in red. Read them over, then climb back up.') }, [
-    pass ? ['Next', nextUnit, 'primary'] : ['Go again', presentStep, 'primary'],
-    ['Exit', exitPractise, 'link']
-  ], r.attempt);
-}
-
-function nextUnit() {
-  const n = units.length;
-  ladder.picked = false;
-  for (let j = 1; j <= n; j++) {
-    const q = (ladder.u + j) % n;
-    if (essay.steps[q] < MASTERED) { ladder.u = q; return presentStep(); }
+  if (stage === 'read') {
+    ladder.drill = null;
+    ladder.go = advance;
+    stepping = false;
+    fillBar(banner, ladderMsg('Read it through, aloud if you can. Then hide it and see what stayed.'), [['Hide it', advance, 'primary'], ...ladderNav()]);
+  } else {
+    ladder.drill = { n: keyed(u.lo, u.hi, i => covered[i]).length, wrong: new Set() };
+    ladder.go = null;
+    stepping = true;
+    drillBanner();
+    if (!typeIn.hidden) typeIn.focus();
   }
-  ladderDone();
+  draw();
+}
+
+// This stage is passed: on to the next one, or the next job
+function advance() {
+  const u = ladder.unit, k = ladder.k;
+  ladder.go = null;
+  if (k < 0) {
+    schedule(u.p, !ladder.slipped);
+    dirty = true;
+    saveNow();
+    return nextJob();
+  }
+  setStep(k, essay.steps[k] + 1);
+  isDone(k) ? nextJob() : presentStage();
+}
+
+function retryStage() {
+  const k = ladder.k;
+  ladder.slipped = true;
+  // twice wrong with everything hidden: back to half hidden for another run-up
+  if (++ladder.fails >= 2 && k >= 0 && units[k].kind === 'learn' && essay.steps[k] === 2) {
+    setStep(k, 1);
+    ladder.fails = 0;
+  }
+  presentStage();
+}
+
+// Every hidden word has been answered: mark the attempt and say what's next
+function finishDrill() {
+  const d = ladder.drill;
+  ladder.drill = null;
+  if (opts.answer === 'say') {
+    ladder.go = advance;
+    return fillBar(banner, ladderMsg('How did that go? It only counts if it came without looking.'), [['Got it', advance, 'primary'], ['Again', retryStage], ...ladderNav()]);
+  }
+  const ok = d.n - d.wrong.size, score = ok + ' of ' + d.n + ' right. ';
+  if (!d.n || 100 * ok / d.n >= PASS) {
+    ladder.go = advance;
+    const next = stageOf() === 'half' ? 'Next, the same with everything hidden.' : ladder.k < 0 ? 'Reviewed.' : 'That one is in.';
+    fillBar(banner, ladderMsg(score + next), [['Continue', advance, 'primary'], ...ladderNav()]);
+  } else {
+    ladder.go = retryStage;
+    fillBar(banner, ladderMsg(score + 'The red words are the ones to look at. Read it over, then go again.'), [['Try again', retryStage, 'primary'], ...ladderNav()]);
+  }
 }
 
 function ladderDone() {
   setPractising(true);
   paintHeads();
-  forceHints = false;
+  Object.assign(ladder, { drill: null, go: null });
   setView('essay');
   setScope(null);
-  fillBar(banner, 'Every paragraph is mastered. The last test is the whole essay on a blank page.', [
+  const days = Math.min(...Object.values(essay.review || {}).map(r => r.due)) - today();
+  const when = !isFinite(days) ? '' : days <= 0 ? ' A review is ready whenever you are.' : ' The next review is ' + (days === 1 ? 'tomorrow' : 'in ' + days + ' days') + '.';
+  fillBar(banner, 'Everything is learned.' + when + ' The real test is the whole essay on a blank page.', [
     ['Blank page', () => { exitPractise(); openBlank('all'); }, 'primary'],
-    ['Start the ladder again', () => { essay.steps = units.map(firstStep); syncLadder(); saveStore(); startPractise(); }],
+    ['Review it all now', () => {
+      Object.values(essay.review || {}).forEach(r => { r.due = today(); });
+      ladder.skipped.clear();
+      nextJob();
+    }],
+    ['Start over', () => {
+      if (!confirm('Forget the progress on this essay and learn it from the start?')) return;
+      essay.steps = units.map(() => 0);
+      essay.review = {};
+      syncLadder();
+      saveStore();
+      startPractise();
+    }, 'link'],
     ['Exit', exitPractise, 'link']
   ]);
 }
@@ -2780,7 +3007,11 @@ modes.addEventListener('click', (e) => {
   modes.open = false;
   if (view !== 'essay' && b.dataset.mode !== 'adapt' && b.dataset.mode !== 'blank') setView('essay');
   ({
-    blank: () => openBlank(ladder ? blankId(ladder.u) : scope ? 'p' + scope.p : 'all'),
+    blank: () => {
+      const p = scope ? scope.p : null;
+      if (ladder) exitPractise();
+      openBlank(p == null ? 'all' : 'p' + p);
+    },
     recite: startRecite,
     listen: startListen,
     skeleton,
