@@ -879,6 +879,7 @@ acknowledge notice
 acknowledge notice react respond
 acknowledge receipt
 acknowledge recognise recognize
+acknowledge recognise recognize concede admit accept realise realize
 acknowledge recognise recognize thank
 acknowledgeable identifiable
 acknowledged assumptive
@@ -1833,6 +1834,7 @@ advocate exhort preach press urge
 advocate moralise moralize preach preachify sermonise sermonize
 advocate preach
 advocate prescribe recommend urge
+advocate promote champion endorse support encourage espouse privilege favour favor prioritise prioritize
 advocate recommend urge
 adynamic asthenic debilitated enervated
 adynamic asthenic debilitated enervated weak
@@ -2802,7 +2804,7 @@ allow countenance furlough let permit
 allow countenance let permit
 allow countenance let permit tolerate
 allow countenance let permit trust
-allow enable permit let empower facilitate
+allow enable permit let empower facilitate afford grant
 allow give grant
 allow grant
 allow grant vouchsafe
@@ -4769,6 +4771,7 @@ arise develop grow originate resurge rise uprise
 arise develop grow originate rise swell uprise
 arise develop grow originate rise uprise
 arise dissent protest rebel resist
+arise emerge stem originate derive spring
 arise hap happen occur pass
 arise lift locomote move rise travel uprise
 arise lift rise rocket skyrocket uprise
@@ -4784,6 +4787,7 @@ arise rebel revolt
 arise rise uprise
 arise uprise
 aristocracy gentry
+aristocracy governance leadership rule
 aristocracy nobility
 aristocrat patrician
 aristocratic aristocratical blue gentle noble patrician
@@ -5248,6 +5252,7 @@ aspirant aspirer hopeful wannabe wannabee
 aspirant aspiring wishful
 aspirate inhale inspire
 aspirate remove
+aspiration desire ambition
 aspiration inhalation inspiration intake
 aspirin bayer empirin
 ass fuck fucking nookie nooky screw screwing shag shtup
@@ -5896,6 +5901,7 @@ authoritative important
 authoritative important influential
 authoritatively magisterially
 authorities government regime
+authority power control dominance
 authorship composition penning writing
 authorship paternity
 autistic ill sick
@@ -6047,6 +6053,7 @@ awake awakened
 awake insomniac sleepless watchful
 awake unsleeping
 awake wakeful waking
+awakening revelation epiphany realisation realization
 awakening wakening
 award awarding
 award bestow confer present
@@ -9179,6 +9186,7 @@ bound sworn
 bound tethered
 bound tied trussed
 bound wired
+boundary parameter limit
 bounded delimited
 bounded delimited finite
 boundedness finiteness finitude
@@ -11583,6 +11591,7 @@ cause induce make stimulate suborn
 cause initiate make pioneer
 cause make
 cause make occasion
+cause precipitate catalyse catalyze trigger spark induce engender provoke prompt
 causeless fortuitous uncaused
 causeless fortuitous uncaused unintended
 causeless reasonless
@@ -11906,6 +11915,7 @@ challenge litigate
 challenge object
 challenge oppugn question
 challenge provoke stimulate
+challenge question subvert undermine destabilise destabilize contest interrogate dispute refute reject repudiate rebut
 challenge remand remit
 challengeable contestable
 challenger competition competitor contender rival
@@ -12091,7 +12101,6 @@ change synthesize
 change tighten
 change transaminate
 change transfer
-change transform alter shift
 change transpire
 change turn
 change ulcerate
@@ -12198,6 +12207,7 @@ characterisation characterization
 characterisation characterization delineation depiction picture
 characterise characterize
 characterise characterize define
+characterise characterize define typify mark distinguish underpin
 characterise characterize differentiate distinguish mark
 characterise characterize differentiate distinguish mark qualify
 characterise characterize individuate
@@ -13670,6 +13680,7 @@ coeducate educate
 coeducational integrated
 coequal equal
 coerce compel force hale obligate oblige pressure squeeze
+coerce compel force pressure oblige
 coerce dragoon force hale pressure railroad sandbag squeeze
 coerce drive force hale pressure squeeze
 coerce force hale pressure squeeze
@@ -14367,6 +14378,7 @@ comparatively relatively
 compare consider equate liken study
 compare equate liken
 compare inflect
+compare juxtapose contrast liken equate parallel
 comparing comparison
 compartmental compartmentalised compartmentalized
 compartmental compartmentalised compartmentalized compartmented
@@ -14958,6 +14970,7 @@ confounding contradictory
 confounding contradictory unsupportive
 confront encounter face meet
 confront face
+confront face challenge encounter tackle address
 confront face front look
 confront face match oppose pit
 confront face tackle undertake
@@ -15322,6 +15335,7 @@ construct delineate describe draw line trace
 construct etymologise etymologize reconstruct retrace
 construct fabricate manufacture
 construct fabricate manufacture raft
+construct framework structure
 construct reconstruct retrace
 construction expression
 construction structure
@@ -15732,6 +15746,7 @@ converter convertor
 convertible exchangeable
 convertible transformable translatable transmutable
 convexity convexness
+convey communicate express articulate transmit impart
 convey evince express show
 convey flash
 convey hint suggest
@@ -16016,6 +16031,7 @@ corrupt depraved perverse perverted reprobate
 corrupt modify spoil
 corrupt praetorian pretorian
 corrupt putrid
+corrupt questionable
 corrupt shoddy sordid
 corrupt spoil
 corrupt stale tainted
@@ -16332,6 +16348,7 @@ covered tiled
 covert protected
 covert secret
 covert subterranean subterraneous ulterior
+covert subtle
 covert undisclosed unrevealed
 covertness hiddenness
 covet drool salivate
@@ -16541,7 +16558,7 @@ crease graze rake shave
 creaseless smooth uncreased
 creaseless uncreased
 creaseproof wrinkleproof
-create construct craft build form shape
+create construct craft build form shape manufacture fabricate forge fashion produce generate establish develop compose design devise conjure
 create customise customize make produce
 create cut make
 create derive educe make
@@ -16736,7 +16753,7 @@ critical supercritical
 critical vital
 criticality criticalness cruciality
 criticise criticize
-criticise criticize condemn critique challenge question denounce
+criticise criticize condemn critique denounce censure rebuke attack lambast
 criticise criticize denounce knock
 criticise criticize deplore knock
 criticise criticize knock
@@ -16998,6 +17015,7 @@ cull mushroom pick pluck
 cull pick pluck
 cull reject
 cull remove
+culminate climax coalesce converge conclude result
 culminate end terminate
 culminate form
 culpably reprehensibly
@@ -17877,6 +17895,7 @@ declare plead
 declare profess
 declare promise
 declare say state tell
+declare state assert proclaim announce say claim
 declared explicit expressed stated
 declared professed
 declared stated
@@ -18179,6 +18198,7 @@ define determine fix limit quantify set specify
 define determine fix limit reset set specify
 define determine fix limit set specify
 define redefine
+define underpin
 defined distinct outlined
 defined outlined
 defining shaping
@@ -18265,6 +18285,7 @@ dehorn disbud
 dehorn remove
 dehumanisation dehumanization
 dehumanise dehumanize
+dehumanise dehumanize degrade objectify debase
 dehumanise dehumanize mechanise mechanize
 dehumanised dehumanized nonhuman unhuman
 dehumanised dehumanized unhuman
@@ -18855,6 +18876,7 @@ descensus prolapse prolapsus
 descent extraction origin
 descent filiation lineage
 describable expressible
+describe depict detail recount portray outline
 describe discover distinguish identify key name
 descriptor form signifier
 descry espy sight spot spy
@@ -19076,6 +19098,7 @@ detergence detergency
 detergent detersive
 detergent detersive purifying
 deteriorate wear
+deterioration corrosion decay decline
 deterioration impairment
 determent deterrence intimidation
 determinable judicable
@@ -20534,6 +20557,7 @@ diver frogman
 diver plunger
 diverge move
 divergence divergency
+divergent disparate different
 divergent diverging
 divergent diverging radiating
 divers diverse
@@ -20907,6 +20931,7 @@ down strike
 down submarine
 down thrown
 down weak
+downfall dismissal regression decline
 downfall fall
 downfall precipitation
 downfall ruin ruination
@@ -21156,6 +21181,7 @@ driven goaded
 driven goaded involuntary nonvoluntary unvoluntary
 driven impelled
 driven impelled motivated
+driven motivated
 driving dynamic dynamical impulsive
 driving energetic
 driving impulsive
@@ -22526,6 +22552,7 @@ ensue follow result
 ensue prove result
 ensue result
 ensuing succeeding
+ensure guarantee secure safeguard
 entail implicate
 entail implicate lead
 entail imply mean
@@ -22649,6 +22676,7 @@ envisage ideate imagine
 envisage ideate imagine prefigure
 envisage ideate imagine think
 envisage ideate imagine visualise visualize
+envision envisage imagine picture conceive foresee visualise visualize
 envision fancy figure image picture see visualise visualize
 envision foresee
 envisioned pictured unreal visualised visualized
@@ -22817,6 +22845,7 @@ ergodic random
 erinyes eumenides fury
 eristic eristical
 erivan jerevan yerevan
+erode corrode degrade deteriorate decay corrupt weaken
 erode gnaw
 eroded scoured
 eroded scoured worn
@@ -22835,6 +22864,7 @@ err mistake slip stumble
 errant fallible
 errant uncontrolled
 erratic fickle mercurial quicksilver
+erratic irrational impulsive deceptive
 erratic planetary unsettled wandering
 erratic planetary wandering
 erratic temperamental
@@ -23093,6 +23123,7 @@ eviscerate remove resect
 eviscerate resect
 evocation summoning
 evocative redolent remindful reminiscent resonant
+evoke elicit arouse provoke stimulate stir inspire instil instill incite prompt engender generate
 evoke imply incriminate inculpate suggest
 evoke pick provoke
 evoke provoke
@@ -23545,7 +23576,7 @@ explorative exploratory
 explorative exploratory preliminary
 explorative exploratory searching
 explorative exploratory wildcat
-explore examine investigate probe consider interrogate analyse analyze scrutinise scrutinize
+explore examine investigate probe consider interrogate analyse analyze scrutinise scrutinize trace study contemplate navigate
 explore google research search
 explore investigate
 explore investigate research search
@@ -23569,6 +23600,7 @@ exportable marketable
 exportation exporting
 expose insolate solarise solarize sun
 expose overexpose
+expose reveal uncover unveil unmask disclose
 expose subject
 expose unclothe uncover
 expose uncover
@@ -25351,6 +25383,7 @@ forepart front
 forerunner harbinger herald precursor predecessor
 forerunner precursor
 foreseeable predictable
+foreshadow prefigure presage portend anticipate prelude
 foreshorten shorten
 foresight foresightedness foresightfulness
 foreskin prepuce
@@ -25574,6 +25607,7 @@ fractiously peevishly querulously
 fractiousness unruliness wilfulness willfulness
 fracture injure wound
 fracture refracture
+fracture schism rupture division
 fradicin neobiotic neomycin
 fragment fragmentise fragmentize
 fragment fragmentise fragmentize grate grind
@@ -27786,6 +27820,7 @@ hideously horridly monstrously
 hierarchal hierarchic hierarchical
 hierarchal hierarchic hierarchical stratified
 hierarchal hierarchic hierarchical vertical
+hierarchy orthodoxy order
 hieratic hieratical priestly sacerdotal
 hieratic nonrepresentational
 hieroglyph hieroglyphic
@@ -28235,6 +28270,7 @@ humanist humanistic humanitarian
 humanist humanitarian
 humanitarian improver
 humanity humanness manhood
+humanity morality
 humble inferior low lowly modest small
 humble low lowly modest small
 humble lowly menial
@@ -28855,6 +28891,7 @@ implicit inexplicit inherent underlying
 implicit inexplicit silent tacit understood
 implicit inexplicit unexpressed unsaid unspoken unstated unuttered unverbalised unverbalized unvoiced
 implicit unquestioning
+implore beg plead urge ask entreat beseech
 imply incriminate inculpate
 imply intimate suggest
 imply involve
@@ -29048,6 +29085,7 @@ inalienable unalienable
 inalienable unforfeitable
 inalterable incurable unalterable
 inalterable unalterable
+inane repetitive
 inanimate nonconscious nonliving
 inanimate nonliving
 inanimateness lifelessness
@@ -29671,6 +29709,7 @@ infrequent occasional
 infrequent rare
 infrigidation refrigeration
 infringement violation
+infuse imbue instil instill fill permeate saturate lace suffuse
 infuse inject
 infuse marinade marinate steep
 infuse steep
@@ -30001,6 +30040,7 @@ integrated mainstreamed
 integrated organic structured
 integrated structured
 integrator planimeter
+integrity honesty
 integrity unity wholeness
 integumental integumentary
 intellect intellectual
@@ -30781,6 +30821,7 @@ just retributive retributory vindicatory
 just rightful
 just simply
 justice justness
+justice righteousness
 justiciar justiciary
 justificative justificatory vindicatory
 justifiedly justly rightly
@@ -32399,6 +32440,7 @@ manifold multiply quintuple
 manifold multiply treble triple
 manipulable tamable tameable tractable
 manipulable tractable
+manipulate exploit weaponise weaponize orchestrate engineer
 manipulate mix ruffle shuffle
 manipulate mouse
 manipulate price rig
@@ -32725,6 +32767,8 @@ medial median
 medial median mesial
 mediate mediated
 mediate middle
+mediate reconcile
+mediation equilibrium balance
 medicament medication medicine
 medicate medicine
 medicate medicine salve
@@ -33073,6 +33117,7 @@ mire morass quag quagmire slack
 mire muck mud
 mirky murky
 mirky murky shaded
+mirror echo parallel reflect resemble recall resonate
 mirror reflect
 mirror reflect reverberate
 mirrored reflected
@@ -34350,6 +34395,7 @@ oblation offering
 obligated obliged
 obligated supposed
 obligated tributary
+obligation responsibility duty
 obligatory prerequisite
 obliquely sidelong sideways
 obliterable removable
@@ -34593,6 +34639,7 @@ openness receptiveness receptivity
 operable practicable
 operable practicable practical
 operant operative
+operate function serve act work
 operate run
 operate treat
 operate trephine
@@ -35975,6 +36022,7 @@ plodder slogger
 plodder slogger trudger
 plodder slowcoach slowpoke
 plop plunk
+plot scheme machination
 plotter schemer
 plough plow
 plough plow ridge
@@ -36151,7 +36199,9 @@ poser sticker stumper toughie
 posing sitting
 posit postulate
 posit postulate presuppose suppose
+posit proffer propose present offer advance assert argue contend claim maintain suggest propound
 posit state submit
+position place situate frame cast establish
 position square
 position status
 positive positivist positivistic
@@ -36220,7 +36270,6 @@ powder talc
 powdered powdery pulverised pulverized
 powderise powderize pulverise pulverize
 powderpuff puff
-power control authority dominance
 power powerfulness
 power superpower
 powered supercharged
@@ -36451,6 +36500,7 @@ print stencil
 print write
 prioritise prioritize
 prise pry
+prisoner inmate
 prisonlike unfree
 pristine pure
 privacy privateness seclusion
@@ -37386,6 +37436,7 @@ refractile refractive
 refractiveness refractivity
 refractory stubborn
 refractory unresponsive
+reframe reimagine reconceptualise reconceptualize reshape reinterpret recontextualise recontextualize rework reconfigure transform appropriate adapt
 refresh review
 refreshfully refreshingly
 refrigerant refrigerating
@@ -37465,6 +37516,7 @@ rein stop
 reincarnate renew
 reincarnate transmigrate
 reinforce reward
+reinforce strengthen affirm reaffirm cement consolidate bolster underscore solidify confirm support
 reinforced strengthened
 reinforced strengthened strong
 reinforcement reinforcer
@@ -37475,6 +37527,7 @@ reissue reprint reprinting
 reissue reprint reproduce
 reject reprobate
 reject repudiate
+rejection repudiation
 rejective repudiative
 rejoice triumph wallow
 rejoin repay retort return riposte
@@ -37516,6 +37569,7 @@ religious sacred spiritual
 religious scrupulous
 religious spiritual
 religiously sacredly
+relinquish surrender abandon renounce forfeit yield cede
 relinquished unoccupied
 relinquishing relinquishment
 relocated resettled
@@ -37568,6 +37622,7 @@ renaissance renascence
 renascent resurgent
 renascent resurgent revived
 rend rip rive
+render depict portray present
 render resubmit return
 render return
 rendering rendition
@@ -37660,6 +37715,7 @@ reseal seal
 reseat seat
 reseed seed
 resell sell
+resentment vengefulness vengeance
 reservation reserve
 reserve reticence taciturnity
 reserve substitute
@@ -37697,6 +37753,7 @@ resolved solved
 resonant resonating resounding reverberant reverberating reverberative
 resonant resonating resounding reverberating reverberative
 resonate sound vibrate
+resonate translate evolve
 resonate vibrate
 respectable upstanding
 respectful reverent reverential venerating
@@ -37723,6 +37780,7 @@ restrained reticent undemonstrative unemotional
 restrained reticent unemotional
 restrained subdued
 restrained unexpansive
+restrict limit inhibit curtail constrain suppress repress stifle confine prohibit hinder diminish reduce curb
 restrictive sumptuary
 restrictive suppressive
 restrictiveness unpermissiveness
@@ -38276,6 +38334,7 @@ satiate satiated
 satinet satinette
 satiny silken silklike silky sleek slick
 satiric satirical
+satirise satirize mock lampoon ridicule parody
 satisfice satisfise
 satyric satyrical
 saunter stroll
@@ -38583,6 +38642,7 @@ seizer shanghaier
 selcraig selkirk
 select superior
 selection survival
+selfish personal
 sell syndicate
 sell trade
 sell undercut undersell
@@ -38804,6 +38864,7 @@ sherbert sherbet
 shetland zetland
 shia shiah
 shibah shiva shivah
+shift change evolve transform alter
 shift shifting
 shift shuffle transfer
 shift shunt transfer
@@ -38895,7 +38956,7 @@ shove squeeze stuff thrust
 shovel shovelful spadeful
 shovelboard shuffleboard
 shoveler shoveller
-show demonstrate illustrate highlight emphasise emphasize underscore underline reveal convey depict portray present display exhibit expose represent reflect capture
+show demonstrate illustrate highlight emphasise emphasize underscore underline reveal convey depict portray present display exhibit expose represent reflect capture foreground accentuate showcase spotlight express manifest evince
 showcase vitrine
 shower spray
 showstopper stopper
@@ -39932,7 +39993,7 @@ suffrutescent woody
 sugared sugary sweetened
 sugared sweetened
 sugariness sweet sweetness
-suggest imply indicate signal hint connote
+suggest imply indicate signal hint connote signify denote insinuate allude intimate
 suggestible susceptible
 suitability suitableness
 suitable suited
@@ -40039,7 +40100,9 @@ susceptible unvaccinated
 susceptible vulnerable
 suspenseful suspensive
 suspenseful suspensive tense
+suspicion concern anxiety fear unease
 suspicion suspiciousness
+sustain maintain preserve uphold retain
 susurration susurrus
 susurration voicelessness whisper whispering
 sutura suture
@@ -40096,6 +40159,7 @@ symbolic symbolical
 symbolisation symbolism symbolization
 symbolisation symbolization
 symbolise symbolize
+symbolise symbolize represent embody epitomise epitomize exemplify personify typify encapsulate signify characterise characterize
 symboliser symbolist symbolizer
 symbolising symbolizing
 symmetric symmetrical
@@ -41406,7 +41470,7 @@ urochesia urochezia
 usable useable
 usable useable useful utile
 usbeg usbek uzbak uzbeg uzbek
-use utilise utilize employ
+use utilise utilize employ leverage harness deploy apply exploit wield adopt
 useful utile
 useful utile utilitarian
 useful utile utilizable
@@ -41636,6 +41700,7 @@ warm warming
 warm warmly
 warmheartedness warmth
 warmness warmth
+warn caution admonish alert
 warp warping
 warsaw warszawa
 wash washout
@@ -41757,6 +41822,7 @@ working workings
 workingman workman
 workings works
 worse worsened
+worsen exacerbate intensify heighten amplify aggravate compound deepen magnify
 worshiper worshipper
 worthwhile worthy
 wound wounding
