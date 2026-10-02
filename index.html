@@ -501,6 +501,64 @@
     #focusSel { order: -2; flex: 1; max-width: none; }
     #tools .undo { order: -1; }
   }
+
+  /* ---- the essay at a glance ---- */
+  #map { margin: 0 0 12px; }
+  #mapRow { display: flex; flex-wrap: wrap; gap: 6px; }
+  .mp {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1 1 110px;
+    max-width: 220px;
+    padding: 7px 9px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .mp:hover { background: var(--soft); }
+  .mp.now { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .mp b { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mp.due b::after { content: ' · due'; color: var(--accent); font-weight: 500; }
+  .segs { display: flex; gap: 2px; }
+  .segs i { flex: 1; height: 5px; border-radius: 2px; background: var(--line); }
+  .segs i.on { background: var(--accent); opacity: 0.55; }
+  .segs i.done { background: var(--accent); }
+  #mapNote { margin-top: 6px; }
+  #trouble { margin-top: 6px; font-size: 13.5px; }
+  #trouble summary { cursor: pointer; color: var(--muted); }
+  #trouble .line { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
+  #trouble .line span:first-child { flex: 1; min-width: 0; }
+  #work.practising #trouble { display: none; }
+
+  /* ---- evidence table and first-letter sheet ---- */
+  #evidence .top, #sheet .top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 6px; }
+  #evidence h3, #sheet h3 {
+    font-family: var(--ui);
+    font-size: 12px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--accent);
+    margin: 20px 0 6px;
+  }
+  #evidence .topic { margin: 0 0 8px; font-size: 14px; }
+  .ev { display: grid; grid-template-columns: minmax(90px, 0.6fr) minmax(140px, 1fr) 1.4fr; gap: 6px 14px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; align-items: start; }
+  @media (max-width: 700px) { .ev { grid-template-columns: 1fr; gap: 4px; } }
+  .ev .tech { font-weight: 600; }
+  .ev .quote { all: unset; cursor: pointer; font-style: italic; border-radius: 4px; }
+  .ev .quote:focus-visible { outline: 2px solid var(--accent); }
+  .ev .hid { background: var(--cover); color: var(--cover); border-radius: 4px; }
+  #sheet .fl { font-family: Arial, sans-serif; font-size: 12pt; line-height: 1.8; letter-spacing: 0.05em; margin: 0 0 4px; overflow-wrap: anywhere; }
+  @media print {
+    #nav, #backup, #controls, #banner, #live, #help, #map, #stage, #blank, #adapt, #evidence, #stepBar, #sheet .top { display: none !important; }
+    body { background: #fff; color: #000; }
+    .wrap { max-width: none; padding: 0; }
+  }
 </style>
 </head>
 <body>
@@ -652,12 +710,22 @@
         <details id="modes" class="menu">
           <summary class="btn">Modes ▾</summary>
           <div class="panel">
+            <div class="head">Recall</div>
             <button class="item" data-mode="blank">Blank page<small>Write it from memory, then check it</small></button>
-            <button class="item" data-mode="recite">Recite aloud<small>Words appear as you say them</small></button>
-            <button class="item" data-mode="listen">Listen with gaps<small>Read to you, pausing at hidden words</small></button>
-            <button class="item" data-mode="skeleton">Skeleton<small>Only the first words of each sentence</small></button>
+            <button class="item" data-mode="exam">Exam run<small>A question, the clock and a blank page</small></button>
+            <div class="head">Drills</div>
+            <button class="item" data-mode="skeleton">Skeleton<small>Only the first words of each sentence show</small></button>
+            <button class="item" data-mode="openers">Sentence openers<small>Hide the first words of each sentence</small></button>
+            <button class="item" data-mode="links">Links<small>Hide where each sentence hands over to the next</small></button>
             <button class="item" data-mode="quotes">Quote drill<small>Hide just the quotes</small></button>
+            <button class="item" data-mode="tech">Techniques<small>Hide the technique terms</small></button>
             <button class="item" data-mode="missed">Missed words<small>Hide just the words you get wrong</small></button>
+            <div class="head">Read</div>
+            <button class="item" data-mode="evidence">Evidence table<small>Technique, quote and analysis, paragraph by paragraph</small></button>
+            <button class="item" data-mode="sheet">First-letter sheet<small>A cue sheet you can print</small></button>
+            <button class="item" data-mode="listen">Listen with gaps<small>Read to you, pausing at hidden words</small></button>
+            <button class="item" data-mode="recite">Recite aloud<small>Words appear as you say them</small></button>
+            <div class="head">Adapt</div>
             <button class="item" data-mode="adapt">Adapt to a question<small>Rework your thesis and topic sentences</small></button>
           </div>
         </details>
@@ -687,6 +755,10 @@
               <option value="80">about 80 words</option>
               <option value="0">a whole paragraph</option>
             </select> at a time</div>
+            <div class="line">Join parts <select id="chainSel">
+              <option value="pairs">in pairs</option>
+              <option value="build">building up from the start</option>
+            </select></div>
             <div class="head">Timed write</div>
             <div class="line"><input type="number" id="timerMins" min="1" max="300"> min <button id="timerBtn" class="btn">Start</button></div>
             <div class="head">Quotes</div>
@@ -730,6 +802,15 @@
     · <button id="hideHelp" class="link">hide</button>
   </div>
 
+  <div id="map" class="ess">
+    <div id="mapRow"></div>
+    <div id="mapNote" class="muted"></div>
+    <details id="trouble" hidden>
+      <summary>Trouble spots</summary>
+      <div id="troubleList"></div>
+    </details>
+  </div>
+
   <div id="stage">
     <div id="textLayer"></div>
     <canvas id="cover"></canvas>
@@ -763,9 +844,31 @@
     <div class="go"><button id="adaptDone" class="btn">Back to the essay</button></div>
   </div>
 
+  <div id="evidence" hidden>
+    <div class="top">
+      <b>Evidence table</b>
+      <span class="muted">Quotes are hidden: tap one to show it</span>
+      <button id="evShow" class="btn">Show all quotes</button>
+      <button id="evTech" class="btn">Hide techniques</button>
+      <button id="evDone" class="btn">Back to the essay</button>
+    </div>
+    <div id="evList"></div>
+  </div>
+
+  <div id="sheet" hidden>
+    <div class="top">
+      <b>First-letter sheet</b>
+      <span class="muted">Each word's first letter, a sentence a line</span>
+      <button id="sheetPrint" class="btn">Print</button>
+      <button id="sheetDone" class="btn">Back to the essay</button>
+    </div>
+    <div id="sheetBody"></div>
+  </div>
+
   <div id="stepBar">
     <button id="backStep" class="btn say">← Back</button>
     <input type="text" id="typeIn" placeholder="Type the next word" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" hidden>
+    <button id="hintBtn" class="btn" hidden>Hint</button>
     <button id="giveUp" class="btn" hidden>Show word</button>
     <button id="wordStep" class="btn say">Word</button>
     <button id="sentStep" class="btn say">Sentence</button>
@@ -786,7 +889,7 @@
 const PALETTE = ['rgba(255,0,0,0.45)', 'rgba(0,120,255,0.45)', 'rgba(255,235,0,0.55)', 'rgba(0,190,0,0.45)', 'rgba(255,140,0,0.5)', 'rgba(155,0,200,0.45)'];
 const COLOUR_NAMES = ['Red', 'Blue', 'Yellow', 'Green', 'Orange', 'Purple'];
 const STORE_KEY = 'essay-eraser';
-const DEFAULT_OPTS = { hints: false, typing: false, count: false, lines: true, help: true, heat: false, eraseStep: 20, part: 1, timerMins: 40, colour: 2, rate: 1, sayAnswers: true, answer: 'words', syn: true };
+const DEFAULT_OPTS = { hints: false, typing: false, count: false, lines: true, help: true, heat: false, eraseStep: 20, part: 1, timerMins: 40, colour: 2, rate: 1, sayAnswers: true, answer: 'words', syn: true, chain: 'pairs' };
 
 const setup = document.getElementById('setup');
 const work = document.getElementById('work');
@@ -866,6 +969,16 @@ const focusChip = document.getElementById('focusChip');
 const subjectList = document.getElementById('subjectList');
 const subjectInput = document.getElementById('subjectInput');
 const quoteCardsBtn = document.getElementById('quoteCardsBtn');
+const chainSel = document.getElementById('chainSel');
+const mapRow = document.getElementById('mapRow');
+const mapNote = document.getElementById('mapNote');
+const trouble = document.getElementById('trouble');
+const troubleList = document.getElementById('troubleList');
+const evidence = document.getElementById('evidence');
+const evList = document.getElementById('evList');
+const sheet = document.getElementById('sheet');
+const sheetBody = document.getElementById('sheetBody');
+const hintBtn = document.getElementById('hintBtn');
 
 // Saved in localStorage: { essays: [{ id, num, title, subject, text, titles, pair, covered, hl, missed, right, wrong,
 // steps, ladder, review, draft, questions, cursor, updated }], openId, opts, focus, days, backupAt,
@@ -903,6 +1016,8 @@ let scope = null;      // { p, lo, hi } when only one paragraph, or part of one,
 let ladder = null;     // while a Practise session is running: { unit, k, drill, go, fails, slipped, skipped }
 let forceHints = false;
 let retry = -1;        // the word that has had one wrong answer and gets one more go
+let hinted = -1;       // the hidden word whose first letter has been asked for
+let exam = null;       // { q, started } during an exam run
 let wrongFlash = -1;   // the hidden word flashing red after a wrong answer
 
 // Layout, measured from the DOM
@@ -1323,7 +1438,7 @@ function renderSaved() {
       rec.subject,
       wc(rec.text) + ' words',
       misses ? misses + ' missed' : '',
-      rec.lastScore != null ? 'blank page ' + rec.lastScore + '%' : '',
+      rec.lastScore != null ? 'last run ' + rec.lastScore + '%' : '',
       due ? due + ' to review' : '',
       rec.updated ? 'practised ' + daysAgo(rec.updated) : ''
     ].filter(Boolean).join(' · '));
@@ -1546,6 +1661,7 @@ function openEssay(rec, fresh, practise) {
   buildTokens(rec.text);
   buildUnits();
   fillFocus();
+  initSteps();
   paintHeads();
   setPractising(false);
   const n = words.length;
@@ -1577,6 +1693,7 @@ function openEssay(rec, fresh, practise) {
   stepping = cursor >= 0 && nextCovered() >= 0;
   if (stepping) scrollToWord(nextCovered());
   commit();
+  drawMap();  // now that the word histories are in
   if (practise) startPractise();
 }
 
@@ -1599,6 +1716,8 @@ function setView(v) {
   stage.hidden = v !== 'essay';
   blank.hidden = v !== 'blank';
   adapt.hidden = v !== 'adapt';
+  evidence.hidden = v !== 'evidence';
+  sheet.hidden = v !== 'sheet';
   help.hidden = !opts.help || v !== 'essay';
   if (v === 'essay' && words.length) { measure(); draw(); }
 }
@@ -1614,6 +1733,7 @@ function setScope(p, lo, hi) {
   focusSel.value = scope ? p : '';
   if (scope && (cursor < scope.lo - 1 || cursor > scope.hi)) cursor = scope.lo - 1;
   if (view === 'essay') { measure(); draw(); }
+  drawMap();
 }
 
 function fillFocus() {
@@ -1650,7 +1770,7 @@ function setPractising(on) {
 function syncInput() {
   const typedDrill = !!ladder && opts.answer !== 'say';
   work.classList.toggle('typed', typedDrill);
-  giveUpBtn.hidden = !typedDrill;
+  giveUpBtn.hidden = hintBtn.hidden = !typedDrill;
   typeIn.hidden = !(typedDrill || (!ladder && opts.typing));
   typeIn.placeholder = typedDrill && opts.answer === 'letters' ? 'First letter of each word' : 'Type the next word';
 }
@@ -1668,6 +1788,7 @@ function paintHeads() {
     const note = at >= of ? (r && r.due <= today() ? 'review due' : 'learned') : at ? Math.round(100 * at / of) + '%' : '';
     if (note) pp.head.append(el('small', { textContent: ' · ' + note }));
   });
+  drawMap();
 }
 
 // Says which drill is on, with a way out; a Practise session keeps its own message
@@ -1719,6 +1840,7 @@ function applyOpts() {
   document.querySelectorAll('[data-opt]').forEach(c => { c.checked = !!opts[c.dataset.opt]; });
   eraseStep.value = opts.eraseStep;
   chunkSel.value = opts.part;
+  chainSel.value = opts.chain;
   timerMins.value = opts.timerMins;
   const c = PALETTE[opts.colour] || PALETTE[0];
   hlDot.style.background = `linear-gradient(${c}, ${c}), #fff`;  // the colour as it looks on the page
@@ -1739,6 +1861,13 @@ eraseStep.addEventListener('change', () => setOpt('eraseStep', +eraseStep.value)
 // a new part size re-cuts the essay; mastered paragraphs stay mastered
 chunkSel.addEventListener('change', () => {
   setOpt('part', +chunkSel.value);
+  if (!essay) return;
+  if (ladder) exitPractise();
+  buildUnits();
+  paintHeads();
+});
+chainSel.addEventListener('change', () => {
+  setOpt('chain', chainSel.value);
   if (!essay) return;
   if (ladder) exitPractise();
   buildUnits();
@@ -1889,6 +2018,39 @@ function buildTokens(text) {
     }
   });
   findQuotes();
+  findTechniques();
+}
+
+// The names of techniques, so they can be drilled and listed against their quotes
+const TECHNIQUES = new Set(('metaphor simile allusion imagery symbol symbolism motif juxtaposition irony hyperbole alliteration enjambment caesura ' +
+  'anaphora epistrophe oxymoron paradox personification tone diction syntax allegory foreshadowing characterisation characterization narration ' +
+  'epilogue epigraph intertextuality pastiche parody satire setting tricolon listing repetition sibilance assonance consonance onomatopoeia ' +
+  'rhyme rhythm metre meter prose stanza volta sonnet couplet fragmentation pronoun modality connotation euphemism understatement litotes ' +
+  'antithesis chiasmus synecdoche metonymy conceit soliloquy aside dialogue monologue flashback analepsis prolepsis exposition climax ' +
+  'denouement catharsis hamartia hubris peripeteia anagnorisis archetype trope dialectic polysyndeton asyndeton ellipsis apostrophe invocation ' +
+  'elegy ode lyric epic pathos ethos logos rhetoric contrast parallelism anecdote cliche idiom pun sarcasm ambiguity emotive evocative sensory ' +
+  'imperative interrogative exclamation exclamatory declarative truncated cumulative accumulation inversion metatheatre metatheatrical ' +
+  'metafiction framing vignette montage narrator perspective focalisation focalization metaphorical symbolic ironic allegorical satirical ' +
+  'hyperbolic juxtaposed personified allusive paradoxical rhetorical sibilant alliterative anaphoric euphemistic metaphoric ironically ' +
+  'symbolically metaphorically satirically juxtaposing juxtaposes symbolises symbolizes personifies alludes foreshadows foreshadowed parodies ' +
+  'satirises satirizes adjective adjectives adverb adverbs verb verbs noun nouns epithet apostrophic intertextual elegiac lyrical epic').split(' '));
+const TECHNIQUES2 = new Set(['stage directions', 'stage direction', 'rhetorical question', 'rhetorical questions', 'dramatic irony', 'high modality',
+  'low modality', 'first person', 'second person', 'third person', 'pathetic fallacy', 'extended metaphor', 'biblical allusion', 'classical allusion',
+  'historical allusion', 'religious imagery', 'natural imagery', 'visual imagery', 'auditory imagery', 'tactile imagery', 'sensory imagery',
+  'free verse', 'blank verse', 'iambic pentameter', 'interior monologue', 'dramatic monologue', 'free indirect discourse', 'unreliable narrator',
+  'present tense', 'past tense', 'emotive language', 'figurative language', 'binary opposition', 'semantic field', 'lexical chain', 'tragic hero',
+  'stream of consciousness', 'in medias res', 'cumulative listing', 'truncated sentence', 'truncated sentences', 'sentence fragment',
+  'sentence fragments', 'direct address', 'direct speech', 'reported speech', 'mise en scene', 'intertextual reference', 'frame narrative',
+  'circular structure', 'parallel structure', 'epistolary form', 'authorial intrusion', 'narrative voice', 'pejorative adjectives',
+  'pejorative adjective', 'religious connotations', 'religious allusion', 'meta-theatrical epilogue', 'dialectical materialism']);
+
+function findTechniques() {
+  const base = w => TECHNIQUES.has(w) ? w : w.endsWith('s') && TECHNIQUES.has(w.slice(0, -1)) ? w.slice(0, -1) : '';
+  words.forEach((w, i) => {
+    const two = i + 1 < words.length && words[i + 1].p === w.p ? w.key + ' ' + words[i + 1].key.replace(/s$/, '') : '';
+    if (TECHNIQUES2.has(two) || TECHNIQUES2.has(w.key + ' ' + (words[i + 1] || {}).key)) { w.tech = true; words[i + 1].tech = true; }
+    else if (!w.tech && base(w.key)) w.tech = true;
+  });
 }
 
 // Anything inside quotation marks, within one paragraph
@@ -1985,11 +2147,11 @@ function render() {
 
   ctx.font = font;
   ctx.textBaseline = 'alphabetic';
-  if (opts.hints || forceHints) {
+  if (opts.hints || forceHints || hinted >= 0) {
     ctx.fillStyle = HINT;
     words.forEach((wd, i) => {
       const b = wd.boxes[0];
-      if (covered[i] && b) ctx.fillText(wd.hint, (b.x + 1) * dpr, b.base * dpr);
+      if (covered[i] && b && (opts.hints || forceHints || i === hinted)) ctx.fillText(wd.hint, (b.x + 1) * dpr, b.base * dpr);
     });
   }
 
@@ -2439,6 +2601,8 @@ function revealWord(n) {
 
 // A word has been answered: show it, score it and move on. A right answer clears an earlier miss.
 function resolve(n, ok, near) {
+  if (hinted === n) { near = true; hinted = -1; }  // right with a nudge: it counts, but amber
+  if (ladder && ladder.drill) { ladder.answered++; if (!ok) ladder.wrongs++; }
   ok ? right[n]++ : wrong[n]++;
   bump('words');
   dirty = true;
@@ -2514,6 +2678,17 @@ function giveUp() {
 }
 
 giveUpBtn.addEventListener('click', giveUp);
+
+// A nudge: the first letter of the word you're on, without giving it away
+function hintWord() {
+  const n = nextCovered();
+  if (n < 0) return;
+  hinted = n;
+  stepping = true;
+  draw();
+}
+
+hintBtn.addEventListener('click', hintWord);
 
 function stepWord() {
   const n = nextCovered();
@@ -2603,8 +2778,9 @@ document.addEventListener('keydown', (e) => {
   const go = ladder && ladder.go;                                    // the practise message's main button
   let fn;
   if (e.key.length === 1 && e.key !== ' ') {
-    if (mode === 'say') return;
-    fn = mode === 'letters' ? () => letterKey(e.key) : () => typeChar(e.key);
+    if (e.key === '/') fn = hintWord;
+    else if (mode === 'say') return;
+    else fn = mode === 'letters' ? () => letterKey(e.key) : () => typeChar(e.key);
   } else fn = {
     ' ': () => typed ? checkTyped() : go ? go() : mode === 'say' || !drill ? stepWord() : 0,
     'Enter': () => typed ? checkTyped() : go ? go() : mode === 'say' || !drill ? stepSentence() : 0,
@@ -2703,6 +2879,7 @@ blankInput.addEventListener('keydown', (e) => {
 });
 
 blankCancel.addEventListener('click', () => {
+  if (exam) { exam = null; stopFocus(); }
   if (ladder) exitPractise();
   else setView('essay');
 });
@@ -2753,10 +2930,24 @@ blankCheck.addEventListener('click', () => {
   if (!blankInput.value.trim()) return;
   const t = blankTargets().find(x => x.id === blankTarget.value);
   const r = grade(blankInput.value, t.lo, t.hi);
-  if (t.id === 'all') essay.lastScore = r.pct;
+  let said = `You recalled ${r.ok} of ${r.total} words (${r.pct}%).`;
+  if (t.id === 'all') {
+    // a whole-essay run goes on the record, with its time if it was against the clock
+    const run = { at: Date.now(), pct: r.pct };
+    if (exam) {
+      run.mins = Math.max(1, Math.round((Date.now() - exam.started) / 60000));
+      run.q = exam.q;
+      exam = null;
+      stopFocus();
+      said = `Exam run: ${r.pct}% in ${run.mins} min. ` + said;
+    }
+    essay.lastScore = r.pct;
+    (essay.runs ||= []).push(run);
+    if (essay.runs.length > 12) essay.runs.shift();
+  }
   delete essay.draft;
   setView('essay');
-  const said = `You recalled ${r.ok} of ${r.total} words (${r.pct}%).`;
+  drawMap();
   fillBar(banner, said + (r.ok < r.total ? ' The words you dropped are in red.' : ''), [
     ['Try again', () => openBlank(t.id)],
     ['Close', () => { banner.hidden = true; }, 'link']
@@ -2818,16 +3009,18 @@ function buildUnits() {
       });
     }
     const of = parts.length;
+    // each new part is linked to the one before it, or (building up) to everything before it
+    const build = opts.chain === 'build';
     parts.forEach((g, i) => {
       units.push({ p, lo: g.lo, hi: g.hi, kind: 'learn', part: i, of });
-      if (i) units.push({ p, lo: parts[i - 1].lo, hi: g.hi, kind: 'link', part: i, of });
+      if (i) units.push({ p, lo: (build ? parts[0] : parts[i - 1]).lo, hi: g.hi, kind: 'link', part: i, of });
     });
-    // with only two parts, linking them already was the whole paragraph
-    if (of > 2) units.push({ p, lo: pp.lo, hi: pp.hi, kind: 'whole', of });
+    // with only two parts, or building up, the last link already was the whole paragraph
+    if (of > 2 && !build) units.push({ p, lo: pp.lo, hi: pp.hi, kind: 'whole', of });
   });
 }
 
-const unitsKey = () => 'v2:' + opts.part + ':' + units.length;
+const unitsKey = () => 'v2:' + opts.part + (opts.chain === 'build' ? ':build' : '') + ':' + units.length;
 const unitsOf = p => units.map((u, k) => u.p === p ? k : -1).filter(k => k >= 0);
 const isDone = k => essay.steps[k] >= STAGES[units[k].kind].length;
 const today = () => Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 864e5);
@@ -2837,7 +3030,7 @@ function unitName(u) {
   const name = paraName(u.p);
   if (u.kind === 'review') return name + ' · review';
   if (u.kind === 'whole') return name + ' · the whole paragraph';
-  if (u.kind === 'link') return name + ' · parts ' + u.part + ' and ' + (u.part + 1) + ' together';
+  if (u.kind === 'link') return name + ' · parts ' + (opts.chain === 'build' && u.part > 1 ? '1 to ' : u.part + ' and ') + (u.part + 1) + ' together';
   return u.of === 1 ? name : name + ' · part ' + (u.part + 1) + ' of ' + u.of;
 }
 
@@ -2879,11 +3072,14 @@ function setStep(k, st) {
 function startPractise() {
   stopLive();
   initSteps();
-  ladder = { k: -1, skipped: new Set() };
-  nextJob();
+  ladder = { k: -1, skipped: new Set(), startedAt: Date.now(), answered: 0, wrongs: 0, done: 0 };
+  // with one paragraph picked out, start on it rather than wherever the essay is up to
+  const k = scope && unitsOf(scope.p).find(k => !isDone(k));
+  k != null && k !== false ? runUnit(units[k], k) : nextJob();
 }
 
 function exitPractise() {
+  const s = ladder;
   ladder = null;
   setPractising(false);
   paintHeads();
@@ -2891,6 +3087,10 @@ function exitPractise() {
   clearTyped();
   setView('essay');
   setScope(null);
+  if (!s || !s.answered) return;
+  const mins = Math.round((Date.now() - s.startedAt) / 60000);
+  fillBar(banner, { title: 'This session', text: [mins ? mins + ' min' : 'under a minute', s.done + (s.done === 1 ? ' step done' : ' steps done'),
+    Math.round(100 * (s.answered - s.wrongs) / s.answered) + '% of words right'].join(' · ') }, [['Close', () => { banner.hidden = true; }, 'link']]);
 }
 
 // What to do next: paragraphs due for review first, then the next thing not yet learned
@@ -2942,7 +3142,7 @@ const ladderNav = () => [['I know this', knowIt], ['Skip for now', skipJob, 'lin
 // How to answer, in the words that fit the device
 function how() {
   const touch = matchMedia('(pointer: coarse)').matches;
-  const stuck = touch ? ' "Show word" helps when you are stuck.' : ' Tab shows a word you are stuck on.';
+  const stuck = touch ? ' Stuck? "Hint" gives the first letter, "Show word" the whole thing.' : ' Stuck? / gives the first letter, Tab the whole word.';
   if (opts.answer === 'letters') return 'Type the first letter of each hidden word.' + stuck;
   if (opts.answer === 'words') return 'Type each hidden word, then Space. Slips and close synonyms pass (amber means it was not the exact word).' + stuck;
   return touch ? 'Say it, tapping Word to check each one. Long-press any you got wrong.'
@@ -2982,15 +3182,21 @@ function presentStage() {
   beginAction();
   for (let i = u.lo; i <= u.hi; i++) setCovered(i, stage === 'all');
   if (stage === 'half') {
-    const ids = keyed(u.lo, u.hi);
-    pickWeighted(ids, Math.ceil(ids.length / 2)).forEach(i => setCovered(i, true));
+    // the first word of each sentence stays as an anchor; the rest are picked by weight
+    const first = new Set();
+    let s = -1;
+    for (let i = u.lo; i <= u.hi; i++) if (words[i].key && words[i].s !== s) { first.add(i); s = words[i].s; }
+    const ids = keyed(u.lo, u.hi, i => !first.has(i));
+    pickWeighted(ids.length ? ids : keyed(u.lo, u.hi), Math.ceil(keyed(u.lo, u.hi).length / 2)).forEach(i => setCovered(i, true));
   }
+  hinted = -1;
   endAction(u.lo - 1);
   if (stage === 'read') {
     ladder.drill = null;
     ladder.go = advance;
     stepping = false;
-    fillBar(banner, ladderMsg('Read it through, aloud if you can. Then hide it and see what stayed.'), [['Hide it', advance, 'primary'], ...ladderNav()]);
+    const hear = 'speechSynthesis' in window ? [['Hear it', () => speakText(words.slice(u.lo, u.hi + 1).map(w => w.tok).join(' '))]] : [];
+    fillBar(banner, ladderMsg('Read it through, aloud if you can. Then hide it and see what stayed.'), [['Hide it', advance, 'primary'], ...hear, ...ladderNav()]);
   } else {
     ladder.drill = { n: keyed(u.lo, u.hi, i => covered[i]).length, wrong: new Set() };
     ladder.go = null;
@@ -3012,7 +3218,8 @@ function advance() {
     return nextJob();
   }
   setStep(k, essay.steps[k] + 1);
-  isDone(k) ? nextJob() : presentStage();
+  if (isDone(k)) { ladder.done++; return nextJob(); }
+  presentStage();
 }
 
 function retryStage() {
@@ -3030,6 +3237,7 @@ function retryStage() {
 function finishDrill() {
   const d = ladder.drill;
   ladder.drill = null;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
   if (opts.answer === 'say') {
     ladder.go = advance;
     return fillBar(banner, ladderMsg('How did that go? It only counts if it came without looking.'), [['Got it', advance, 'primary'], ['Again', retryStage], ...ladderNav()]);
@@ -3115,6 +3323,202 @@ function drillMissed() {
   draw();
   modeNote('Missed words: only the words you have got wrong are hidden.');
 }
+
+// The opening words of each sentence: the hardest part to get going
+function drillOpeners() {
+  const [lo, hi] = range();
+  beginAction();
+  let s = -1, n = 0;
+  for (let i = lo; i <= hi; i++) {
+    if (words[i].s !== s) { s = words[i].s; n = 0; }
+    if (words[i].key) n++;
+    setCovered(i, n > 0 && n <= 3);
+  }
+  endAction(lo - 1);
+  stepping = true;
+  draw();
+  modeNote('Sentence openers: the first three words of each sentence are hidden. Give each one its start.');
+}
+
+// Where one sentence hands over to the next: the last two words of one and the first two of the next
+function drillLinks() {
+  const [lo, hi] = range();
+  const sents = [];
+  for (let i = lo; i <= hi; i++) {
+    if (!words[i].key) continue;
+    const last = sents[sents.length - 1];
+    last && last.s === words[i].s ? last.ids.push(i) : sents.push({ s: words[i].s, ids: [i] });
+  }
+  if (sents.length < 2) return alert('Links need at least two sentences.');
+  const hide = new Set();
+  sents.forEach((x, k) => {
+    if (k < sents.length - 1) x.ids.slice(-2).forEach(i => hide.add(i));
+    if (k > 0) x.ids.slice(0, 2).forEach(i => hide.add(i));
+  });
+  beginAction();
+  for (let i = lo; i <= hi; i++) setCovered(i, hide.has(i));
+  endAction(lo - 1);
+  stepping = true;
+  draw();
+  modeNote('Links: the last two words of each sentence and the first two of the next are hidden.');
+}
+
+// The technique terms, since they are what the marker is looking for
+function drillTech() {
+  const [lo, hi] = range();
+  if (!keyed(lo, hi, i => words[i].tech).length) return alert('No technique terms found in this part of the essay.');
+  beginAction();
+  for (let i = lo; i <= hi; i++) setCovered(i, !!words[i].tech);
+  endAction(lo - 1);
+  stepping = true;
+  draw();
+  modeNote('Techniques: only the technique terms are hidden.');
+}
+
+// One sentence on its own, everything hidden
+function drillSentence(lo, hi) {
+  if (ladder) exitPractise();
+  stopLive();
+  setScope(words[lo].p, lo, hi);
+  setRange(true);
+  stepping = true;
+  draw();
+  modeNote('One sentence on its own. Recall it; the picker above brings the whole essay back.');
+}
+
+// The clock, a question if there is one, and a blank page
+function examRun() {
+  if (ladder) exitPractise();
+  stopLive();
+  const qs = essay.questions || [];
+  exam = { q: qs.length ? qs[Math.floor(Math.random() * qs.length)] : '', started: Date.now() };
+  startFocus(opts.timerMins, essay.subject);
+  openBlank('all');
+  fillBar(banner, { title: 'Exam run · ' + opts.timerMins + ' min on the clock',
+    text: exam.q ? 'Question: ' + exam.q : 'No question saved. Add some under "Adapt to a question" and one will be set here.' },
+    [['Give up', () => { exam = null; stopFocus(); setView('essay'); banner.hidden = true; }, 'link']]);
+}
+
+/* ---------- the essay at a glance ---------- */
+
+// A block per paragraph with a bar per part, coloured by how far it has come
+function drawMap() {
+  if (!essay) return;
+  const fresh = Array.isArray(essay.steps) && essay.stepsKey === unitsKey();
+  const t = today();
+  let done = 0, total = 0, dueN = 0;
+  mapRow.textContent = '';
+  paras.forEach((pp, p) => {
+    const ks = unitsOf(p), parts = ks.filter(k => units[k].kind === 'learn');
+    const did = fresh ? ks.filter(isDone).length : 0;
+    const due = fresh && essay.ladder[p] >= MASTERED && essay.review && essay.review[p] && essay.review[p].due <= t;
+    done += did;
+    total += ks.length;
+    if (due) dueN++;
+    const segs = el('span', { className: 'segs' });
+    parts.forEach(k => segs.append(el('i', { className: !fresh ? '' : isDone(k) ? 'done' : essay.steps[k] ? 'on' : '' })));
+    const b = el('button', { type: 'button', className: 'mp' + (due ? ' due' : '') + (scope && scope.p === p ? ' now' : ''),
+      title: paraName(p) + ': ' + did + ' of ' + ks.length + ' steps done' + (due ? ', due for review' : '') }, el('b', { textContent: paraName(p) }), segs);
+    b.addEventListener('click', () => focusPara(scope && scope.p === p && !ladder ? null : p));
+    mapRow.append(b);
+  });
+  const runs = essay.runs || [];
+  const last = runs[runs.length - 1], before = runs[runs.length - 2];
+  mapNote.textContent = [done + ' of ' + total + ' steps done', dueN ? dueN + (dueN === 1 ? ' paragraph' : ' paragraphs') + ' due for review' : '',
+    last ? 'last run ' + last.pct + '%' + (before ? ' (was ' + before.pct + '%)' : '') : ''].filter(Boolean).join(' · ');
+  drawTrouble();
+}
+
+// The sentences that keep going wrong, each with a way to drill it on its own
+function drawTrouble() {
+  const slips = new Map();
+  words.forEach((w, i) => { const n = wrong[i] + (missed[i] ? 1 : 0); if (n) slips.set(w.s, (slips.get(w.s) || 0) + n); });
+  const worst = [...slips].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  trouble.hidden = !worst.length;
+  troubleList.textContent = '';
+  worst.forEach(([s, n]) => {
+    const ids = sentenceOf(words.findIndex(w => w.s === s)), lo = ids[0], hi = ids[ids.length - 1];
+    const b = el('button', { type: 'button', className: 'btn', textContent: 'Drill' });
+    b.addEventListener('click', () => drillSentence(lo, hi));
+    troubleList.append(el('div', { className: 'line' },
+      el('span', { textContent: words.slice(lo, Math.min(hi, lo + 7) + 1).map(w => w.tok).join(' ') + (hi - lo > 7 ? ' …' : '') }),
+      el('span', { className: 'muted', textContent: n + (n === 1 ? ' slip' : ' slips') }), b));
+  });
+}
+
+/* ---------- evidence table and first-letter sheet ---------- */
+
+const tokText = (lo, hi) => words.slice(lo, hi + 1).map(w => w.tok).join(' ');
+
+// Technique, quote and the sentence it sits in, paragraph by paragraph: the table most essays
+// are built from. The quotes start hidden, so it doubles as a drill.
+function openEvidence() {
+  if (ladder) exitPractise();
+  stopLive();
+  banner.hidden = true;
+  evList.textContent = '';
+  paras.forEach((pp, p) => {
+    const sec = el('section', {}, el('h3', { textContent: paraName(p) }));
+    const first = sentenceOf(pp.lo);
+    sec.append(el('p', { className: 'topic', textContent: tokText(first[0], first[first.length - 1]) }));
+    quotes.filter(q => q.lo >= pp.lo && q.hi <= pp.hi).forEach(q => {
+      const ids = sentenceOf(q.lo), a = ids[0], b = ids[ids.length - 1];
+      // the technique terms in that sentence, keeping two-word ones ("stage directions") together
+      const techs = [], run = [];
+      for (let i = a; i <= b + 1; i++) {
+        if (i <= b && words[i].tech) run.push(words[i].tok.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '').toLowerCase());
+        else if (run.length) techs.push(run.splice(0).join(' '));
+      }
+      const tech = [...new Set(techs)].join(', ');
+      const quote = el('button', { type: 'button', className: 'quote hid', textContent: tokText(q.lo, q.hi), title: 'Show or hide the quote' });
+      quote.addEventListener('click', () => quote.classList.toggle('hid'));
+      sec.append(el('div', { className: 'ev' }, el('span', { className: 'tech', textContent: tech || '—' }), quote,
+        el('span', { className: 'ana muted', textContent: [tokText(a, q.lo - 1), '…', tokText(q.hi + 1, b)].filter(Boolean).join(' ') })));
+    });
+    evList.append(sec);
+  });
+  document.getElementById('evShow').textContent = 'Show all quotes';
+  document.getElementById('evTech').textContent = 'Hide techniques';
+  setView('evidence');
+  window.scrollTo(0, 0);
+}
+
+document.getElementById('evShow').addEventListener('click', (e) => {
+  const show = e.target.textContent === 'Show all quotes';
+  evList.querySelectorAll('.quote').forEach(q => q.classList.toggle('hid', !show));
+  e.target.textContent = show ? 'Hide all quotes' : 'Show all quotes';
+});
+document.getElementById('evTech').addEventListener('click', (e) => {
+  const hide = e.target.textContent === 'Hide techniques';
+  evList.querySelectorAll('.tech').forEach(q => q.classList.toggle('hid', hide));
+  e.target.textContent = hide ? 'Show techniques' : 'Hide techniques';
+});
+document.getElementById('evDone').addEventListener('click', () => setView('essay'));
+
+// Each word's first letter, a sentence to a line: the classic cue sheet
+function openSheet() {
+  if (ladder) exitPractise();
+  stopLive();
+  banner.hidden = true;
+  sheetBody.textContent = '';
+  paras.forEach((pp, p) => {
+    const sec = el('section', {}, el('h3', { textContent: paraName(p) }));
+    let line = [], s = words[pp.lo].s;
+    const flush = () => { if (line.length) sec.append(el('p', { className: 'fl', textContent: line.join(' ') })); line = []; };
+    for (let i = pp.lo; i <= pp.hi; i++) {
+      if (words[i].s !== s) { flush(); s = words[i].s; }
+      const end = words[i].tok.match(/[.!?,;:]+["”’')\]]*$/);
+      line.push(words[i].hint + (end ? end[0] : ''));
+    }
+    flush();
+    sheetBody.append(sec);
+  });
+  setView('sheet');
+  window.scrollTo(0, 0);
+}
+
+document.getElementById('sheetPrint').addEventListener('click', () => window.print());
+document.getElementById('sheetDone').addEventListener('click', () => setView('essay'));
 
 // One cloze note per quote: the sentence it sits in, with the quote blanked
 ankiBtn.addEventListener('click', () => {
@@ -3263,6 +3667,17 @@ function beep() {
   } catch (e) {}
 }
 
+// Read a stretch of the essay out once
+function speakText(text) {
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-AU';
+  u.voice = pickVoice();
+  u.rate = opts.rate;
+  speechSynthesis.speak(u);
+}
+
 function pickVoice() {
   const v = speechSynthesis.getVoices();
   return v.find(x => /^en[-_]AU/i.test(x.lang)) || v.find(x => /^en[-_]GB/i.test(x.lang)) || v.find(x => /^en/i.test(x.lang)) || null;
@@ -3403,18 +3818,24 @@ modes.addEventListener('click', (e) => {
   const b = e.target.closest('[data-mode]');
   if (!b) return;
   modes.open = false;
-  if (view !== 'essay' && b.dataset.mode !== 'adapt' && b.dataset.mode !== 'blank') setView('essay');
+  if (view !== 'essay' && !['adapt', 'blank', 'exam', 'evidence', 'sheet'].includes(b.dataset.mode)) setView('essay');
   ({
     blank: () => {
       const p = scope ? scope.p : null;
       if (ladder) exitPractise();
       openBlank(p == null ? 'all' : 'p' + p);
     },
+    exam: examRun,
     recite: startRecite,
     listen: startListen,
     skeleton,
+    openers: drillOpeners,
+    links: drillLinks,
     quotes: hideQuotes,
+    tech: drillTech,
     missed: drillMissed,
+    evidence: openEvidence,
+    sheet: openSheet,
     adapt: openAdapt
   })[b.dataset.mode]();
 });
