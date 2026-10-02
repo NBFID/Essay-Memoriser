@@ -481,6 +481,10 @@
   .papers .sum { margin-bottom: 8px; }
   .spark { margin-left: auto; display: inline-flex; align-items: flex-end; gap: 2px; height: 22px; }
   .spark i { width: 6px; background: var(--accent); border-radius: 1px; }
+  #bankList details { margin-bottom: 10px; }
+  #bankList summary { cursor: pointer; }
+  #bankList .bank p { margin: 10px 0 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 14px; }
+  #bankList .btn { margin: 8px 0 2px; }
   .note .msg { display: flex; flex-direction: column; gap: 4px; }
   .note .msg b { font-weight: 650; }
   .steps { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--muted); }
@@ -686,6 +690,9 @@
     <button class="btn primary" id="examSave">Add exam</button>
     <button type="button" class="btn" id="examCancel" hidden>Cancel</button>
   </form>
+  <h2>English question bank</h2>
+  <p class="lead">Every essay question from the 2019–2025 HSC papers and recent trials, by module. Open an essay and use "Adapt to a question" to pull a module's questions in.</p>
+  <div id="bankList"></div>
   <h2>Past papers</h2>
   <div id="paperList"></div>
   <form id="paperForm" class="card fields">
@@ -835,6 +842,13 @@
     <div class="muted">
       <button id="adaptNext" class="link">Another question</button>
       &nbsp; <button id="adaptEdit" class="link">Edit questions</button>
+      &nbsp; <select id="bankSel" class="btn" title="Past HSC and trial questions">
+        <option value="">Add past questions…</option>
+        <option value="common">Common Module</option>
+        <option value="modA">Module A</option>
+        <option value="modB">Module B</option>
+        <option value="modC">Module C</option>
+      </select>
     </div>
     <div id="adaptEditor" hidden>
       <textarea id="adaptList" placeholder="Paste past questions for this module, one per line"></textarea>
@@ -969,6 +983,7 @@ const focusChip = document.getElementById('focusChip');
 const subjectList = document.getElementById('subjectList');
 const subjectInput = document.getElementById('subjectInput');
 const quoteCardsBtn = document.getElementById('quoteCardsBtn');
+const bankSel = document.getElementById('bankSel');
 const chainSel = document.getElementById('chainSel');
 const mapRow = document.getElementById('mapRow');
 const mapNote = document.getElementById('mapNote');
@@ -3803,6 +3818,30 @@ function openAdapt() {
   setView('adapt');
   window.scrollTo(0, 0);
 }
+
+// questions.json: past HSC and trial questions by module, fetched the first time they're wanted
+let bank = null;
+function loadBank() {
+  return bank ? Promise.resolve(bank) : fetch('questions.json').then(r => r.json()).then(b => (bank = b));
+}
+
+// Pull a module's questions into this essay's list, skipping any it already has
+bankSel.addEventListener('change', async () => {
+  const id = bankSel.value;
+  bankSel.value = '';
+  if (!id || !essay) return;
+  let b;
+  try { b = await loadBank(); } catch (e) { return alert('The question bank needs a connection the first time.'); }
+  const m = b.modules.find(x => x.id === id);
+  if (!m) return;
+  const have = new Set(essay.questions || []);
+  const fresh = m.questions.map(x => x.q + ' [' + x.src + ']').filter(q => !have.has(q));
+  essay.questions = [...(essay.questions || []), ...fresh];
+  saveStore();
+  adaptList.value = essay.questions.join('\n');
+  adaptEditor.hidden = true;
+  showQuestion();
+});
 
 adaptNext.addEventListener('click', showQuestion);
 adaptEdit.addEventListener('click', () => { adaptEditor.hidden = !adaptEditor.hidden; });

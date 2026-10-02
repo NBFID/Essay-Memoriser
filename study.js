@@ -467,7 +467,27 @@
 
   function renderExams() {
     drawExams();
+    drawBank();
     drawPapers();
+  }
+
+  // The question bank, a module to a fold-out, with the questions ready to copy
+  const bankList = $('bankList');
+  function drawBank() {
+    if (bankList.childElementCount) return;
+    loadBank().then(b => {
+      bankList.textContent = '';
+      b.modules.forEach(m => {
+        const list = el('div', { className: 'bank' });
+        m.questions.forEach(x => list.append(el('p', {}, x.q, ' ', el('span', { className: 'muted', textContent: '[' + x.src + ']' }))));
+        const copy = button('Copy', () => {
+          navigator.clipboard.writeText(m.questions.map(x => x.q + ' [' + x.src + ']').join('\n')).then(() => { copy.textContent = 'Copied'; });
+        });
+        bankList.append(el('details', { className: 'card' },
+          el('summary', {}, el('b', { textContent: m.name }), ' ', el('span', { className: 'muted', textContent: plural(m.questions.length, 'question') + ' · ' + m.paper })),
+          el('p', { className: 'muted', textContent: m.text }), copy, list));
+      });
+    }).catch(() => { bankList.append(lead('The question bank needs a connection the first time.')); });
   }
 
   function editExam(x) {
