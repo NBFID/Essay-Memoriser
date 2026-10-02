@@ -748,6 +748,7 @@
             <div class="head">Check</div>
             <label><input type="checkbox" data-opt="typing"> Type each word to check it</label>
             <label><input type="checkbox" data-opt="syn"> Accept close synonyms</label>
+            <label><input type="checkbox" data-opt="keyOnly"> Little words fill themselves in</label>
             <div class="line">Hide <select id="eraseStep">
               <option value="10">10</option>
               <option value="20">20</option>
@@ -805,7 +806,7 @@
   <div id="live" class="note" hidden></div>
   <div id="help">
     Tap a word to reveal or hide it · drag across text for a whole stretch · double-tap for its sentence · right-click or long-press marks it missed<span class="keys"> ·
-    Space next word · Enter next sentence · ←&nbsp;step back</span><span id="typingHelp"> · type the next word then Space to check it · Tab shows it</span>
+    Space next word · Enter next sentence · ←&nbsp;step back</span><span id="typingHelp"> · type the next word then Space to check it · / hints, Tab shows it</span>
     · <button id="hideHelp" class="link">hide</button>
   </div>
 
@@ -903,7 +904,7 @@
 const PALETTE = ['rgba(255,0,0,0.45)', 'rgba(0,120,255,0.45)', 'rgba(255,235,0,0.55)', 'rgba(0,190,0,0.45)', 'rgba(255,140,0,0.5)', 'rgba(155,0,200,0.45)'];
 const COLOUR_NAMES = ['Red', 'Blue', 'Yellow', 'Green', 'Orange', 'Purple'];
 const STORE_KEY = 'essay-eraser';
-const DEFAULT_OPTS = { hints: false, typing: false, count: false, lines: true, help: true, heat: false, eraseStep: 20, part: 1, timerMins: 40, colour: 2, rate: 1, sayAnswers: true, answer: 'words', syn: true, chain: 'pairs' };
+const DEFAULT_OPTS = { hints: false, typing: false, count: false, lines: true, help: true, heat: false, eraseStep: 20, part: 1, timerMins: 40, colour: 2, rate: 1, sayAnswers: true, answer: 'words', syn: true, chain: 'pairs', keyOnly: true };
 
 const setup = document.getElementById('setup');
 const work = document.getElementById('work');
@@ -1172,16 +1173,28 @@ function stem(w) {
   return s;
 }
 
-// Is the guess the word? Typos are forgiven in proportion to the word's length (one slip in a
-// short word, up to three in a long one), and so is a different ending or a near-identical word.
-// A one- or two-letter word has to be exact.
-function sameWord(g, key) {
+// Two letters next to each other the wrong way round: "teh" for "the"
+function swapped(a, b) {
+  const i = [...a].findIndex((c, k) => c !== b[k]);
+  return i >= 0 && a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2);
+}
+
+// Is the guess the word? One typo is forgiven (two in a long word, three in a very long one),
+// and so is a different ending of the same word. A one- or two-letter word has to be exact,
+// and a short word is easily another word, so it can't become one by swapping a letter ("now"
+// for "not") or be another little word ("then" for "the"). Inside a quote (strict) a slip only
+// passes in a longer word, and only if the first letter is right: a quote has to be the quote.
+function sameWord(g, key, strict) {
   if (g === key) return true;
   if (!g || key.length < 3) return false;
-  const slips = key.length <= 4 ? 1 : key.length <= 7 ? 2 : 3;
-  if (Math.abs(g.length - key.length) <= slips && editDistance(g, key) <= slips) return true;
-  const a = stem(g), b = stem(key);
-  return a.length >= 3 && (a === b || (b.length >= 5 && Math.abs(a.length - b.length) <= 1 && editDistance(a, b) <= 1));
+  const slips = strict ? (key.length >= 5 ? 1 : 0) : key.length <= 8 ? 1 : key.length <= 12 ? 2 : 3;
+  if (slips && Math.abs(g.length - key.length) <= slips && editDistance(g, key) <= slips) {
+    const safe = key.length > 4 || (!STOP.has(g) && (g.length !== key.length || swapped(g, key)));
+    if (safe && (!strict || g[0] === key[0])) return true;
+  }
+  if (strict) return false;
+  const a = stem(g);
+  return a.length >= 3 && a === stem(key);
 }
 
 /* ---------- synonyms ---------- */
@@ -2179,7 +2192,7 @@ function render() {
 
   // the marker: where the reader is, or the next word to recall
   const seg = talk && talk.segs[talk.k];
-  const n = talk ? (seg ? seg.a : -1) : stepping || typed ? nextCovered() : -1;
+  const n = talk ? (seg ? seg.a : -1) : stepping || typed ? target() : -1;
   const b = n >= 0 && words[n].boxes[0];
   if (b) {
     if (wrongFlash === n) {
@@ -2532,6 +2545,7 @@ function endGesture(g, keep) {
 }
 
 function clearTyped() {
+  retry = -1;
   if (!typed && !typeIn.value) return;
   typed = '';
   typeIn.value = '';
@@ -2633,7 +2647,7 @@ function resolve(n, ok, near) {
 
 // A wrong answer gets one more go before the word is shown
 function wrongTry(n) {
-  if (retry === n) return resolve(n, false);
+  if (retry === n) return settle(n, false);
   retry = n;
   wrongFlash = n;
   setTimeout(() => { wrongFlash = -1; draw(); }, 450);
@@ -2648,14 +2662,51 @@ function nextAfter(n) {
   return -1;
 }
 
-// Whole-word answers: what's been typed is checked against the next hidden word
+// Little words ("the", "of", "his") are the ones that fill themselves in when a real word is typed
+const little = i => STOP.has(words[i].key) || words[i].key.length <= 2;
+const typingWords = () => ladder && ladder.drill ? opts.answer === 'words' : opts.typing;
+
+// The word a typed answer is for: the next hidden word, or past any little words to the next
+// real one when they fill themselves in
+function target() {
+  const n = nextCovered();
+  if (n < 0 || !opts.keyOnly || !typingWords()) return n;
+  const [, hi] = range();
+  for (let i = n; i >= 0 && i <= hi; i = nextAfter(i)) if (!little(i)) return i;
+  return n;
+}
+
+// Does the guess fit word i? Typos pass, close synonyms pass outside quotes
+function fits(g, i) {
+  const w = words[i];
+  return sameWord(g, w.key, w.q >= 0) || (w.q < 0 && synonym(g, w.key));
+}
+
+// Answer word i, first settling the hidden words before it: little ones fill in as right
+// (when that's on), real ones were left out and count as missed
+function settle(i, ok, near) {
+  for (let j = nextCovered(); j >= 0 && j < i; j = nextAfter(j)) resolve(j, opts.keyOnly && little(j));
+  resolve(i, ok, near);
+  // little words left at the end have nothing after them to be typed on the way to
+  if (opts.keyOnly && typingWords()) {
+    const [lo, hi] = range();
+    const rest = keyed(lo, hi, k => covered[k]);
+    if (rest.length && rest.every(little)) rest.forEach(k => resolve(k, true));
+  }
+}
+
+let lastCheck = 0;  // when a word was last answered, so a stray second Space doesn't step on
+
+// Whole-word answers: what's been typed is checked against the next hidden words. An exact
+// match is taken first (so "then" isn't taken for "the"), then a near one; a match a word or two
+// ahead means the words between were left out.
 function checkTyped() {
   const guess = typed, g = normalise(guess);
   const n = nextCovered();
   if (n < 0 || !g) return clearTyped();
-  const key = words[n].key;
+  const t = target(), key = words[t].key;
   // "self-knowledge" typed as two words: the space after "self" isn't the end of the answer
-  const parts = subKeys(words[n].tok);
+  const parts = subKeys(words[t].tok);
   if (parts.length > 1 && g.length < key.length) {
     let cut = 0;
     if (parts.slice(0, -1).some(part => (cut += part.length) === g.length) && sameWord(g, key.slice(0, g.length))) {
@@ -2666,39 +2717,40 @@ function checkTyped() {
   }
   typed = '';
   typeIn.value = '';
-  // a quote has to be the quote: typos are fine there, a different word isn't
-  if (sameWord(g, key) || (words[n].q < 0 && synonym(g, key))) return resolve(n, true, g !== key);
-  // it's the word after: the one in between was left out
-  const n2 = nextAfter(n);
-  if (n2 >= 0 && words[n2].key.length >= 4 && sameWord(g, words[n2].key)) {
-    resolve(n, false);
-    return resolve(n2, true);
-  }
-  wrongTry(n);
+  lastCheck = Date.now();
+  const ahead = [n];
+  for (let i = nextAfter(n); i >= 0 && ahead.length < 6; i = nextAfter(i)) ahead.push(i);
+  const real = i => !little(i) && words[i].key.length >= 3;
+  let hit = ahead.find((i, k) => g === words[i].key && (k === 0 || real(i)));
+  if (hit === undefined) hit = ahead.find((i, k) => (k === 0 || (real(i) && words[i].key.length >= 4)) && fits(g, i));
+  // too many real words would have been skipped for this to be where you are
+  if (hit === undefined || ahead.slice(0, ahead.indexOf(hit)).filter(real).length > 2) return wrongTry(t);
+  settle(hit, true, g !== words[hit].key);
 }
 
 // First-letter answers: one key per hidden word
 function letterKey(c) {
   const n = nextCovered(), g = normalise(c);
   if (n < 0 || !g) return;
+  lastCheck = Date.now();
   g === words[n].key[0] ? resolve(n, true) : wrongTry(n);
 }
 
 // Stuck: show the word and count it as missed
 function giveUp() {
-  const n = nextCovered();
-  if (n < 0) return;
+  const t = target();
+  if (t < 0) return;
   clearTyped();
-  resolve(n, false);
+  settle(t, false);
 }
 
 giveUpBtn.addEventListener('click', giveUp);
 
 // A nudge: the first letter of the word you're on, without giving it away
 function hintWord() {
-  const n = nextCovered();
-  if (n < 0) return;
-  hinted = n;
+  const t = target();
+  if (t < 0) return;
+  hinted = t;
   stepping = true;
   draw();
 }
@@ -2793,19 +2845,17 @@ document.addEventListener('keydown', (e) => {
   const go = ladder && ladder.go;                                    // the practise message's main button
   let fn;
   if (e.key.length === 1 && e.key !== ' ') {
-    if (e.key === '/') fn = hintWord;
+    if (e.key === '/' && !typed) fn = hintWord;
     else if (mode === 'say') return;
     else fn = mode === 'letters' ? () => letterKey(e.key) : () => typeChar(e.key);
   } else fn = {
-    ' ': () => typed ? checkTyped() : go ? go() : mode === 'say' || !drill ? stepWord() : 0,
-    'Enter': () => typed ? checkTyped() : go ? go() : mode === 'say' || !drill ? stepSentence() : 0,
+    // a second Space or Enter hard on the heels of a check is a slip of the thumb, not a step
+    ' ': () => typed ? checkTyped() : Date.now() - lastCheck < 500 ? 0 : go ? go() : mode === 'say' || !drill ? stepWord() : 0,
+    'Enter': () => typed ? checkTyped() : Date.now() - lastCheck < 500 ? 0 : go ? go() : mode === 'say' || !drill ? stepSentence() : 0,
     'Tab': mode === 'say' ? undefined : giveUp,
     'ArrowRight': drill && mode !== 'say' ? giveUp : stepWord,
     'ArrowLeft': drill ? undefined : stepBack,
-    'Backspace': () => {
-      if (typed) { typed = typed.slice(0, -1); typeIn.value = typed; draw(); }
-      else if (!drill) stepBack();
-    },
+    'Backspace': () => { if (typed) { typed = typed.slice(0, -1); typeIn.value = typed; draw(); } },
     'Escape': () => { if (typed) clearTyped(); else selectPen('cover'); }
   }[e.key];
   if (!fn) return;
@@ -2831,6 +2881,7 @@ typeIn.addEventListener('input', () => {
   if (!/\s$/.test(v)) { stepping = true; return draw(); }
   if (typed) return checkTyped();
   typeIn.value = '';
+  if (Date.now() - lastCheck < 500) return;
   if (!ladder) stepWord();
   else if (ladder.go) ladder.go();
 });
@@ -2842,6 +2893,7 @@ typeIn.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
   e.preventDefault();
   if (typed) checkTyped();
+  else if (Date.now() - lastCheck < 500) return;
   else if (!ladder) stepWord();
   else if (ladder.go) ladder.go();
 });
@@ -2900,7 +2952,7 @@ blankCancel.addEventListener('click', () => {
 });
 
 // "self-knowledge" counts the same typed with a hyphen, a dash or a space
-const subKeys = tok => tok.split(/[—–-]+/).map(normalise).filter(Boolean);
+const subKeys = tok => tok.split(/[—–\/-]+/).map(normalise).filter(Boolean);
 
 // Line the attempt up against the essay: essay words that have no match were dropped
 function grade(text, lo, hi) {
@@ -3159,7 +3211,7 @@ function how() {
   const touch = matchMedia('(pointer: coarse)').matches;
   const stuck = touch ? ' Stuck? "Hint" gives the first letter, "Show word" the whole thing.' : ' Stuck? / gives the first letter, Tab the whole word.';
   if (opts.answer === 'letters') return 'Type the first letter of each hidden word.' + stuck;
-  if (opts.answer === 'words') return 'Type each hidden word, then Space. Slips and close synonyms pass (amber means it was not the exact word).' + stuck;
+  if (opts.answer === 'words') return 'Type each word, then Space' + (opts.keyOnly ? '; little words like "the" fill themselves in' : '') + '. Slips and close synonyms pass (amber means it was not the exact word). Tapping a hidden word shows it and counts it as missed.' + stuck;
   return touch ? 'Say it, tapping Word to check each one. Long-press any you got wrong.'
     : 'Say it, pressing Space to check each word. Right-click any you got wrong.';
 }
@@ -3252,6 +3304,7 @@ function retryStage() {
 function finishDrill() {
   const d = ladder.drill;
   ladder.drill = null;
+  lastCheck = Date.now();
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (opts.answer === 'say') {
     ladder.go = advance;
